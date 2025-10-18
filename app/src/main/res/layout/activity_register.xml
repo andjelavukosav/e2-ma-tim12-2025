@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    tools:context="com.example.mobil2025.ui.auth.RegisterActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- EMAIL -->
+        <EditText
+            android:id="@+id/etEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Email"
+            android:inputType="textEmailAddress"
+            android:autoLink="email" />
+
+        <!-- LOZINKA -->
+        <EditText
+            android:id="@+id/etPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Lozinka"
+            android:inputType="textPassword"
+            android:imeOptions="actionNext" />
+
+        <!-- POTVRDA LOZINKE -->
+        <EditText
+            android:id="@+id/etPasswordConfirm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Potvrdi lozinku"
+            android:inputType="textPassword"
+            android:imeOptions="actionNext" />
+
+        <!-- KORISNIČKO IME -->
+        <EditText
+            android:id="@+id/etUsername"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Korisničko ime"
+            android:inputType="textNoSuggestions|textVisiblePassword"
+            android:maxLength="20" />
+
+        <!-- NASLOV ZA AVATARE -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Izaberi avatar:"
+            android:textStyle="bold"
+            android:paddingTop="12dp"
+            android:paddingBottom="8dp" />
+
+        <!-- IZBOR AVATARA (ImageView dugmad) -->
+        <LinearLayout
+            android:id="@+id/avatar_selection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:padding="8dp">
+
+            <!-- Fox -->
+            <ImageView
+                android:id="@+id/avatar_fox"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:src="@drawable/avatar_fox"
+                android:contentDescription="@string/app_name"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@drawable/avatar_border"
+                android:padding="4dp"
+                android:layout_margin="4dp" />
+
+            <!-- Turtle -->
+            <ImageView
+                android:id="@+id/avatar_turtle"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:src="@drawable/avatar_turtle"
+                android:contentDescription="@string/app_name"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@drawable/avatar_border"
+                android:padding="4dp"
+                android:layout_margin="4dp" />
+
+            <!-- Lion -->
+            <ImageView
+                android:id="@+id/avatar_lion"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:src="@drawable/avatar_lion"
+                android:contentDescription="@string/app_name"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@drawable/avatar_border"
+                android:padding="4dp"
+                android:layout_margin="4dp" />
+
+            <!-- Cat -->
+            <ImageView
+                android:id="@+id/avatar_cat"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:src="@drawable/avatar_cat"
+                android:contentDescription="@string/app_name"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@drawable/avatar_border"
+                android:padding="4dp"
+                android:layout_margin="4dp" />
+
+            <!-- Panda -->
+            <ImageView
+                android:id="@+id/avatar_panda"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:src="@drawable/avatar_panda"
+                android:contentDescription="@string/app_name"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@drawable/avatar_border"
+                android:padding="4dp"
+                android:layout_margin="4dp" />
+
+        </LinearLayout>
+
+        <!-- DUGME REGISTRACIJA -->
+        <Button
+            android:id="@+id/btnRegister"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Registruj se" />
+
+        <!-- PROGRESS (skriven dok ne treba) -->
+        <ProgressBar
+            android:id="@+id/progress"
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:visibility="gone"
+            android:paddingTop="12dp" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="16dp" />
+
+    </LinearLayout>
+</ScrollView>
