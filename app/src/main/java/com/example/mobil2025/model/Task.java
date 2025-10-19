@@ -9,7 +9,7 @@ public class Task {
 
     // Jednokratni ili ponavljajući
     public boolean recurring;          // true => koristi recurrence polja ispod
-    public int recurrenceInterval;     // 1, 2, 3...
+    public Integer recurrenceInterval;     // 1, 2, 3...
     public String recurrenceUnit;      // "day" ili "week"
     public Long startDate;             // UTC millis na 00:00 startnog datuma (može biti 0 ako nije recurring)
     public Long endDate;               // može biti null

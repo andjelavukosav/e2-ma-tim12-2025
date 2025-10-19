@@ -170,10 +170,13 @@ public class TaskDetailActivity extends AppCompatActivity {
             sb.append("Rok: ").append(t.dueTime > 0 ? fDateTime.format(new java.util.Date(t.dueTime)) : "—");
         }
         tvTiming.setText(sb.toString());
+        updateButtonsVisibility(t);
+
     }
 
     private void updateStatus(String status) {
         if (current == null || current.id == null) return;
+        if (!canChangeStatus(status)) return;
 
         if ("done".equals(status) && Boolean.TRUE.equals(current.recurring)) {
             long when = getIntent().getLongExtra("occurrenceAt", 0L);
@@ -217,6 +220,80 @@ public class TaskDetailActivity extends AppCompatActivity {
         Category c = /* ako u detalju imaš mapu id->Category */ null;
         // ili po potrebi vrati default:
         return "#607D8B";
+    }
+
+    private boolean canChangeStatus(String newStatus) {
+        if (current == null) return false;
+
+        long now = System.currentTimeMillis();
+
+        // ⏱ Relevantno vreme za proveru:
+        // - jednokratni zadatak -> dueTime
+        // - ponavljajući zadatak -> datum pojedinačne pojave (occurrenceAt)
+        long relevantTime;
+        if (Boolean.TRUE.equals(current.recurring)) {
+            relevantTime = getIntent().getLongExtra("occurrenceAt", 0L);
+            if (relevantTime <= 0L) {
+                Toast.makeText(this, "Nedostaje datum pojave (otvori iz kalendara).", Toast.LENGTH_LONG).show();
+                return false;
+            }
+        } else {
+            relevantTime = current.dueTime != null ? current.dueTime : 0L;
+        }
+
+        // ⏰ Zadaci stariji od 3 dana postaju neurađeni (samo aktivni)
+        if ("active".equals(current.status) && relevantTime > 0) {
+            long threeDaysAgo = now - (3 * 24 * 60 * 60 * 1000);
+            if (relevantTime < threeDaysAgo) {
+                new TaskRepository().updateTaskStatus(current.id, "not_done",
+                        v -> Toast.makeText(this, "Zadatak automatski označen kao neurađen", Toast.LENGTH_SHORT).show(),
+                        e -> {});
+                return false;
+            }
+        }
+
+        // ❌ Neurađeni i otkazani se ne mogu menjati
+        if ("not_done".equals(current.status) || "canceled".equals(current.status)) {
+            Toast.makeText(this, "Ovaj zadatak se ne može više menjati.", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+
+        // 🟢 Samo aktivan ili pauziran može biti menjan
+        if (!"active".equals(current.status) && !"paused".equals(current.status)) {
+            Toast.makeText(this, "Samo aktivan ili pauziran zadatak se može menjati.", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+
+        // ⏳ Zadatak se može označiti kao urađen tek nakon isteka vremena izvršenja
+        if ("done".equals(newStatus) && relevantTime > now) {
+            Toast.makeText(this, "Zadatak se može označiti kao urađen tek nakon isteka vremena izvršenja.", Toast.LENGTH_LONG).show();
+            return false;
+        }
+
+        // ⏸ Pauziranje samo za ponavljajuće zadatke
+        if ("paused".equals(newStatus) && !Boolean.TRUE.equals(current.recurring)) {
+            Toast.makeText(this, "Samo ponavljajući zadaci mogu biti pauzirani.", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+
+        return true;
+    }
+
+
+
+    private void updateButtonsVisibility(Task t) {
+        btnActive.setEnabled(false);
+        btnDone.setEnabled(false);
+        btnPaused.setEnabled(false);
+        btnCanceled.setEnabled(false);
+
+        if ("active".equals(t.status)) {
+            btnDone.setEnabled(true);
+            btnCanceled.setEnabled(true);
+            if (Boolean.TRUE.equals(t.recurring)) btnPaused.setEnabled(true);
+        } else if ("paused".equals(t.status)) {
+            btnActive.setEnabled(true); // dozvoli ponovno aktiviranje
+        }
     }
 
 

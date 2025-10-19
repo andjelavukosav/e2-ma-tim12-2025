@@ -15,6 +15,7 @@ import com.example.mobil2025.ui.category.CategoryListActivity;
 import com.example.mobil2025.ui.task.CalendarActivity;
 import com.example.mobil2025.ui.task.CreateTaskActivity;
 import com.example.mobil2025.ui.task.TaskListActivity;   // ✅ import liste zadataka
+import com.example.mobil2025.util.TaskStatusUpdater;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -31,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        new TaskStatusUpdater().markExpiredTasksAsNotDone();
 
         btnLogout = findViewById(R.id.btnLogout);
         btnOpenCategories = findViewById(R.id.btnOpenCategories);

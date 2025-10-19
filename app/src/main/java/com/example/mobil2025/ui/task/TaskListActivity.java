@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.mobil2025.R;
 import com.example.mobil2025.data.repo.TaskRepository;
 import com.example.mobil2025.model.Task;
+import com.example.mobil2025.util.TaskStatusUpdater;
 import com.google.android.material.tabs.TabLayout;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.*;
@@ -32,6 +33,12 @@ public class TaskListActivity extends AppCompatActivity {
     private final List<Task> all = new ArrayList<>();
     private final List<Task> singles = new ArrayList<>();
     private final List<Task> recurs = new ArrayList<>();
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        new TaskStatusUpdater().markExpiredTasksAsNotDone();
+    }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -126,18 +133,4 @@ public class TaskListActivity extends AppCompatActivity {
         }
     }
 
-    private void showStatusSheet(Task t) {
-        String[] opts = new String[] { "Aktivno", "Urađeno", "Pauzirano", "Otkazano" };
-        String[] values = new String[] { "active", "done", "paused", "canceled" };
-
-        new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle(t.name)
-                .setItems(opts, (d, which) -> {
-                    repo.updateTaskStatus(t.id, values[which],
-                            v -> Toast.makeText(this, "Status ažuriran", Toast.LENGTH_SHORT).show(),
-                            e -> Toast.makeText(this, "Greška: " + e.getMessage(), Toast.LENGTH_LONG).show());
-                })
-                .setNegativeButton("Zatvori", null)
-                .show();
-    }
 }

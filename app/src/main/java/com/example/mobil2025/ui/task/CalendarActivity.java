@@ -1,10 +1,10 @@
+// LOKACIJA: app/src/main/java/com/example/mobil2025/ui/task/CalendarActivity.java
 package com.example.mobil2025.ui.task;
 
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
-import android.widget.TextView;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.Nullable;
@@ -35,71 +35,80 @@ import java.util.*;
  * - klik na stavku -> TaskDetailActivity (menjanje statusa tamo)
  */
 public class CalendarActivity extends AppCompatActivity {
-    private final OccurrenceRepository occRepo = new OccurrenceRepository();
 
-    private CalendarView calendarView;
-    private RecyclerView rvDayTasks;
-
+    // Repo-i
     private final TaskRepository taskRepo = new TaskRepository();
     private final CategoryRepository categoryRepo = new CategoryRepository();
-    private ListenerRegistration tasksReg;
+    private final OccurrenceRepository occRepo = new OccurrenceRepository();
 
-    private final Map<String, Category> categoriesMap = new HashMap<>();
-    private final List<Task> allTasks = new ArrayList<>();
-
-    // YYYY-MM-DD -> lista taskova tog dana
-    private final Map<String, List<Task>> tasksByDayKey = new HashMap<>();
-
+    // UI
+    private CalendarView calendarView;
+    private RecyclerView rvDayTasks;
     private TaskBriefAdapter briefAdapter;
 
+    // State
+    private ListenerRegistration tasksReg;
+    private final Map<String, Category> categoriesMap = new HashMap<>();
+    private final List<Task> allTasks = new ArrayList<>();
+    private final Map<String, List<Task>> tasksByDayKey = new HashMap<>(); // "yyyy-MM-dd" -> tasks
+    private Calendar lastSelectedDay; // fallback ako korisnik još nije kliknuo dan
+
+    // Konstante
     private static final long SIX_MONTHS_MS = 183L * 24 * 60 * 60 * 1000; // ~6m
     private final TimeZone appZone = TimeZone.getDefault();
     private final Locale appLocale = Locale.getDefault();
 
-    @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_calendar);
 
+        // Inicijalni fallback: danas
+        lastSelectedDay = Calendar.getInstance();
+
         calendarView = findViewById(R.id.calendarView);
 
-        // ✅ U layoutu umesto TextView koristi RecyclerView sa ovim id-jem:
-        // <RecyclerView android:id="@+id/rvDayTasks" .../>
+        // RecyclerView za listu zadataka iz izabranog dana
         rvDayTasks = findViewById(R.id.rvDayTasks);
         if (rvDayTasks == null) {
-            // Ako još nisi promenila XML, privremeno izađi:
-            throw new IllegalStateException("Dodaj RecyclerView s id=rvDayTasks u activity_calendar.xml (vidi prethodne poruke).");
+            throw new IllegalStateException("Dodaj RecyclerView s id=rvDayTasks u activity_calendar.xml");
         }
         rvDayTasks.setLayoutManager(new LinearLayoutManager(this));
+
+        // KREIRAJ JEDAN adapter i odmah ga poveži sa RV
         briefAdapter = new TaskBriefAdapter(t -> {
             if (t == null || t.id == null || t.id.isEmpty()) return;
 
-            // Uzmi trenutno izabrani dan iz kalendara (Applandeo)
-            Calendar selected = calendarView.getFirstSelectedDate();
-            long clickedDayMillis = (selected != null) ? selected.getTimeInMillis() : System.currentTimeMillis();
+            long occurrenceAt = (lastSelectedDay != null)
+                    ? lastSelectedDay.getTimeInMillis()
+                    : System.currentTimeMillis();
 
             Intent it = new Intent(this, TaskDetailActivity.class);
             it.putExtra("taskId", t.id);
-            it.putExtra("occurrenceAt", clickedDayMillis); // ✅ prosledi datum pojave
+            it.putExtra("occurrenceAt", occurrenceAt);
             startActivity(it);
         });
-
         rvDayTasks.setAdapter(briefAdapter);
 
-        loadCategoriesThenTasks();
-
-        // Klik na dan: prikaži listu zadataka za taj dan
+        // Klik na dan: osvježi listu za taj dan
         calendarView.setOnDayClickListener(eventDay -> {
-            Calendar clicked = eventDay.getCalendar();
-            String key = dayKey(clicked.getTimeInMillis(), appZone, appLocale);
+            lastSelectedDay = eventDay.getCalendar(); // zapamti izabrani dan
+            String key = dayKey(lastSelectedDay.getTimeInMillis(), appZone, appLocale);
             List<Task> dayTasks = tasksByDayKey.getOrDefault(key, Collections.emptyList());
             briefAdapter.submit(dayTasks);
         });
+
+        // Učitaj kategorije pa slušaj zadatke
+        loadCategoriesThenTasks();
     }
 
-    @Override protected void onDestroy() {
+    @Override
+    protected void onDestroy() {
         super.onDestroy();
         if (tasksReg != null) tasksReg.remove();
     }
+
+    // -------------------- Data loading --------------------
 
     private void loadCategoriesThenTasks() {
         categoryRepo.getMyCategories(list -> {
@@ -116,7 +125,7 @@ public class CalendarActivity extends AppCompatActivity {
         String uid = FirebaseAuth.getInstance().getUid();
         if (uid == null) return;
 
-        // Ovaj listener drži ekran svežim kad dodaješ/menjaš zadatke
+        // ✅ ispravno ime metode (slušaj zadatke za korisnika)
         tasksReg = taskRepo.listenTasksForUsers(uid, (QuerySnapshot snap, com.google.firebase.firestore.FirebaseFirestoreException e) -> {
             if (e != null || snap == null) return;
             allTasks.clear();
@@ -125,21 +134,25 @@ public class CalendarActivity extends AppCompatActivity {
         });
     }
 
-    /** Izračunaj sve pojave (single + recurring) u prozoru -6m .. +6m i nacrtaj tačke. */
+    // -------------------- Calendar build --------------------
 
+    /** Izračunaj pojave (single + recurring) u prozoru -6m .. +6m i nacrtaj tačke. */
     private void rebuildCalendar() {
         tasksByDayKey.clear();
         List<EventDay> events = new ArrayList<>();
 
         long now = System.currentTimeMillis();
         long from = now - SIX_MONTHS_MS;
-        long to   = now + SIX_MONTHS_MS;
+        long to = now + SIX_MONTHS_MS;
 
-        // 1) Aktivni taskovi (kao do sada)
+        // 1) Aktivni taskovi (crtamo pojave u opsegu)
         for (Task t : allTasks) {
-            // po želji: preskoči jednokratne "done" u budućnosti itd.
+            // (opciono) preskoči otkazane iz kalendara
+            // if ("canceled".equalsIgnoreCase(t.status)) continue;
+
             Set<String> days = dayKeysForTaskInRange(t, from, to);
             int color = colorForCategory(t.categoryId);
+
             for (String k : days) {
                 tasksByDayKey.computeIfAbsent(k, z -> new ArrayList<>()).add(t);
                 Calendar cal = keyToCalendar(k, appZone, appLocale);
@@ -147,30 +160,33 @@ public class CalendarActivity extends AppCompatActivity {
             }
         }
 
-        // 2) Završene pojave (occurrences) – dodaj ih kao tačke
+        // 2) Završene pojave (occurrences) – samo za prikaz u kalendaru
         occRepo.loadOccurrencesInRange(from, to, occs -> {
             for (Occurrence oc : occs) {
+                // crtaj i "done" occurrence-e
                 String key = dayKey(oc.startAt, appZone, appLocale);
-                // Ove pojave ne dodajemo u listu editable Task-ova (jer su istorija),
-                // osim ako hoćeš da se listaju. Po specifikaciji: samo da se prikazuju u kalendaru.
                 int color = Color.parseColor(oc.categoryColorHex != null ? oc.categoryColorHex : "#607D8B");
                 Calendar cal = keyToCalendar(key, appZone, appLocale);
                 events.add(new EventDay(cal, new ColorDrawable(color)));
-            }
-            calendarView.setEvents(events);
 
-            // osveži listu za današnji dan (i dalje su to živи taskovi)
-            String todayKey = dayKey(now, appZone, appLocale);
+                // opcionalno dodaj u tasksByDayKey da se pojavi u listi
+                Task t = new Task();
+                t.id = oc.id;
+                t.name = oc.name;
+                t.description = oc.description;
+                t.categoryId = oc.categoryId;
+                tasksByDayKey.computeIfAbsent(key, k -> new ArrayList<>()).add(t);
+            }
+
+            calendarView.setEvents(events);
+            String todayKey = dayKey(System.currentTimeMillis(), appZone, appLocale);
             briefAdapter.submit(tasksByDayKey.getOrDefault(todayKey, Collections.emptyList()));
         }, err -> {
-            // ako padne occurrences load, i dalje prikaži taskove
             calendarView.setEvents(events);
-            String todayKey = dayKey(now, appZone, appLocale);
-            briefAdapter.submit(tasksByDayKey.getOrDefault(todayKey, Collections.emptyList()));
         });
     }
 
-    // ========== Pomoćne ==========
+        // -------------------- Helpers --------------------
 
     @ColorInt
     private int colorForCategory(String categoryId) {
@@ -183,7 +199,7 @@ public class CalendarActivity extends AppCompatActivity {
         return Color.parseColor("#607D8B"); // default siva
     }
 
-    /** Kreira skup ključeva dana (YYYY-MM-DD) za single/recurring task u datom opsegu. */
+    /** Kreira skup ključeva dana (yyyy-MM-dd) za single/recurring task u datom opsegu. */
     private Set<String> dayKeysForTaskInRange(Task t, long rangeStart, long rangeEnd) {
         Set<String> out = new HashSet<>();
         if (t == null) return out;
@@ -198,7 +214,7 @@ public class CalendarActivity extends AppCompatActivity {
             return out;
         }
 
-        // Ponavljajući: računamo dnevno ili nedeljno u koraku intervala
+        // Ponavljajući: dnevno ili nedeljno u koraku intervala
         int step = Math.max(1, t.recurrenceInterval);
         boolean weekly = isWeekly(t.recurrenceUnit);
 
@@ -211,7 +227,8 @@ public class CalendarActivity extends AppCompatActivity {
 
         // preskoči do opsega
         while (cur.getTimeInMillis() < rangeStart) {
-            if (weekly) cur.add(Calendar.WEEK_OF_YEAR, step); else cur.add(Calendar.DAY_OF_MONTH, step);
+            if (weekly) cur.add(Calendar.WEEK_OF_YEAR, step);
+            else        cur.add(Calendar.DAY_OF_MONTH, step);
             if (cur.getTimeInMillis() > endLimit) return out;
         }
         // skupljaj dok smo u opsegu
@@ -219,7 +236,8 @@ public class CalendarActivity extends AppCompatActivity {
             long s = cur.getTimeInMillis();
             if (s > endLimit || s > rangeEnd) break;
             out.add(dayKey(s, zone, appLocale));
-            if (weekly) cur.add(Calendar.WEEK_OF_YEAR, step); else cur.add(Calendar.DAY_OF_MONTH, step);
+            if (weekly) cur.add(Calendar.WEEK_OF_YEAR, step);
+            else        cur.add(Calendar.DAY_OF_MONTH, step);
         }
         return out;
     }
@@ -271,7 +289,7 @@ public class CalendarActivity extends AppCompatActivity {
         return c;
     }
 
-    // ========== Adapter za listu (ime + opis) ==========
+    // ==================== Adapter (ime + opis) ====================
 
     private static class TaskBriefAdapter extends RecyclerView.Adapter<TaskBriefAdapter.VH> {
         interface OnTaskClick { void onClick(Task t); }
@@ -303,7 +321,7 @@ public class CalendarActivity extends AppCompatActivity {
         @Override public int getItemCount() { return data.size(); }
 
         static class VH extends RecyclerView.ViewHolder {
-            TextView tvName, tvDesc;
+            android.widget.TextView tvName, tvDesc;
             VH(android.view.View v) {
                 super(v);
                 tvName = v.findViewById(R.id.tvName);
