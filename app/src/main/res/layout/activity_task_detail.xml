@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView android:text="Naziv" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        <TextView android:id="@+id/tvName" android:textStyle="bold" android:textSize="18sp"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+
+        <TextView android:text="Opis" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"/>
+        <TextView android:id="@+id/tvDesc" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+
+        <TextView android:text="Kategorija" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"/>
+        <TextView android:id="@+id/tvCategory" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+
+        <TextView android:text="Tip" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"/>
+        <TextView android:id="@+id/tvType" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+
+        <!-- Jednokratni -->
+        <LinearLayout android:id="@+id/boxSingle"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:layout_marginTop="8dp">
+            <TextView android:text="Rok" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <TextView android:id="@+id/tvDue" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        </LinearLayout>
+
+        <!-- Ponavljajući -->
+        <LinearLayout android:id="@+id/boxRecurring"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:layout_marginTop="8dp">
+            <TextView android:text="Početak — Kraj" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <TextView android:id="@+id/tvRange" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+
+            <TextView android:text="Pravilo" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"/>
+            <TextView android:id="@+id/tvRule" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+
+            <TextView android:text="Sledeće pojave" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"/>
+            <TextView android:id="@+id/tvNexts" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        </LinearLayout>
+
+        <!-- Status -->
+        <TextView android:text="Status" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"/>
+        <Spinner
+            android:id="@+id/spStatus"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"/>
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="8dp">
+
+            <Button android:id="@+id/btnSaveStatus" android:layout_width="0dp" android:layout_height="48dp"
+                android:layout_weight="1" android:text="Sačuvaj status"/>
+
+            <Space android:layout_width="8dp" android:layout_height="0dp"/>
+
+            <Button android:id="@+id/btnMarkDone" android:layout_width="0dp" android:layout_height="48dp"
+                android:layout_weight="1" android:text="Označi kao urađeno"/>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

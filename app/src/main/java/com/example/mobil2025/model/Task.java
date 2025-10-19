@@ -27,6 +27,7 @@ public class Task {
 
     public Long createdAt;
     public Long updatedAt;             // dodato, dobro je imati
+    public String status;   // "active", "done", "paused", "canceled"
 
     public Task() {}
 }

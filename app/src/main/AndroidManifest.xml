@@ -39,6 +39,11 @@
             android:exported="true" />
 
         <activity
+            android:name=".ui.task.TaskDetailActivity"
+            android:exported="false"/>
+
+
+        <activity
             android:name=".ui.task.TaskListActivity"
             android:exported="false" />
 

@@ -9,6 +9,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.Calendar;
@@ -78,6 +79,11 @@ public class TaskRepository {
                 .addSnapshotListener(listener);
     }
 
+    public ListenerRegistration listenTasksForUsers(String uid, EventListener<QuerySnapshot> listener) {
+        return db.collection("tasks")
+                .whereEqualTo("ownerUid", uid)
+                .addSnapshotListener(listener);
+    }
     /** Brzi upit: "šta je danas" (koristi denormalizovani nextDueAt prozor) */
     public void listenToday(String uid, long dayStartUtc, long dayEndUtc,
                             EventListener<QuerySnapshot> listener) {
@@ -180,4 +186,14 @@ public class TaskRepository {
         return Instant.ofEpochMilli(utcMidnightMillis).atZone(zone).toLocalDate();
     }
 
+    // NOVO: helper – promjena statusa
+    public void updateTaskStatus(String taskId, String status,
+                                 OnSuccessListener<Void> ok,
+                                 OnFailureListener err) {
+        boolean active = "active".equals(status);
+        db.collection("tasks").document(taskId)
+                .update("status", status, "active", active)
+                .addOnSuccessListener(ok)
+                .addOnFailureListener(err);
+    }
 }
