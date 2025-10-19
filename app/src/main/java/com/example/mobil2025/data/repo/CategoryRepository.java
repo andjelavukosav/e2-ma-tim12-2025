@@ -9,13 +9,17 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.firestore.Transaction;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -172,4 +176,42 @@ public class CategoryRepository {
                 .addOnFailureListener(err);
     }
 
+    /** STREAM: slušaj moje kategorije; vrati ListenerRegistration za odjavu. */
+    public ListenerRegistration listenMyCategories(
+            EventListener<List<Category>> listener) {
+
+        String uid = FirebaseAuth.getInstance().getUid();
+        if (uid == null) {
+            // odma’ javi prazan rezultat
+            listener.onEvent(new ArrayList<>(), null);
+            return () -> {};
+        }
+
+        return db.collection("categories")
+                .whereEqualTo("ownerUid", uid)
+                .addSnapshotListener((snap, err) -> {
+                    if (err != null || snap == null) {
+                        listener.onEvent(new ArrayList<>(), err);
+                        return;
+                    }
+                    List<Category> list = snap.toObjects(Category.class);
+                    listener.onEvent(list, null);
+                });
+    }
+
+    /** ONE-SHOT: učitaj jednom moje kategorije. */
+    public void getMyCategories(
+            com.google.android.gms.tasks.OnSuccessListener<List<Category>> ok,
+            com.google.android.gms.tasks.OnFailureListener err) {
+
+        String uid = FirebaseAuth.getInstance().getUid();
+        if (uid == null) { err.onFailure(new IllegalStateException("Not signed in")); return; }
+
+        db.collection("categories")
+                .whereEqualTo("ownerUid", uid)
+                .orderBy("name", Query.Direction.ASCENDING)
+                .get()
+                .addOnSuccessListener(qs -> ok.onSuccess(qs.toObjects(Category.class)))
+                .addOnFailureListener(err);
+    }
 }

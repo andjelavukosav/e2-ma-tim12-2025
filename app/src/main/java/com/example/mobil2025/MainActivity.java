@@ -11,14 +11,18 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.mobil2025.ui.auth.LoginActivity;
-import com.example.mobil2025.ui.category.CategoryListActivity; // ✅ DODAJ OVO
+import com.example.mobil2025.ui.category.CategoryListActivity;
+import com.example.mobil2025.ui.task.CreateTaskActivity;
+import com.example.mobil2025.ui.task.TaskListActivity;   // ✅ import liste zadataka
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
 public class MainActivity extends AppCompatActivity {
 
     private Button btnLogout;
-    private Button btnOpenCategories; // ✅
+    private Button btnOpenCategories;
+    private Button btnCreateTask;
+    private Button btnShowTasks; // ✅ NOVO
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,14 +30,20 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         btnLogout = findViewById(R.id.btnLogout);
-        btnOpenCategories = findViewById(R.id.btnOpenCategories); // ✅
+        btnOpenCategories = findViewById(R.id.btnOpenCategories);
+        btnCreateTask = findViewById(R.id.btnCreateTask);
+        btnShowTasks = findViewById(R.id.btnShowTasks); // ✅
 
-        // Otvori ekran kategorija
-        btnOpenCategories.setOnClickListener(v -> {
-            startActivity(new Intent(this, CategoryListActivity.class));
-        });
+        btnCreateTask.setOnClickListener(v ->
+                startActivity(new Intent(this, CreateTaskActivity.class)));
 
-        // Odjava
+        btnOpenCategories.setOnClickListener(v ->
+                startActivity(new Intent(this, CategoryListActivity.class)));
+
+        // ✅ Otvori listu zadataka
+        btnShowTasks.setOnClickListener(v ->
+                startActivity(new Intent(this, TaskListActivity.class)));
+
         btnLogout.setOnClickListener(v -> {
             FirebaseAuth.getInstance().signOut();
             Intent intent = new Intent(this, LoginActivity.class);
@@ -53,7 +63,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart(){
         super.onStart();
-        // Guard: ako se dodje bez sesije onda vrati na Login
         FirebaseUser current = FirebaseAuth.getInstance().getCurrentUser();
         if (current == null) {
             Intent intent = new Intent(this, LoginActivity.class);

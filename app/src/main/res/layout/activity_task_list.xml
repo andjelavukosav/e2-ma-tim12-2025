@@ -1,0 +1,38 @@
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!-- Top bar -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/topAppBar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        android:title="Zadaci"
+        android:titleTextColor="@android:color/white"
+        app:navigationIcon="@drawable/ic_arrow_back"/>
+
+    <!-- Dugme za prikaz liste zadataka -->
+    <Button
+        android:id="@+id/btnShowTasks"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Prikaži sve zadatke"
+        android:layout_gravity="center"
+        android:padding="16dp"
+        tools:ignore="MissingConstraints"/>
+
+    <!-- RecyclerView za prikaz zadataka -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvTasks"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingTop="72dp"
+        android:clipToPadding="false"
+        tools:listitem="@layout/item_task"/>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

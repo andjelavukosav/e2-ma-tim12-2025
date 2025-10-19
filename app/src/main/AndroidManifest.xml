@@ -33,6 +33,16 @@
         <activity
             android:name=".ui.category.CategoryListActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".ui.task.CreateTaskActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".ui.task.TaskListActivity"
+            android:exported="false" />
+
+
     </application>
 
 </manifest>
