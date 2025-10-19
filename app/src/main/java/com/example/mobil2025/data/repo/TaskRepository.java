@@ -6,6 +6,7 @@ import com.example.mobil2025.model.Task;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -14,6 +15,7 @@ import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.Calendar;
 import java.util.Locale;
+import java.util.Map;
 import java.util.TimeZone;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -196,4 +198,48 @@ public class TaskRepository {
                 .addOnSuccessListener(ok)
                 .addOnFailureListener(err);
     }
+
+    public void deleteTask(String taskId,
+                           OnSuccessListener<Void> ok,
+                           OnFailureListener err) {
+        FirebaseFirestore.getInstance()
+                .collection("tasks").document(taskId)
+                .delete()
+                .addOnSuccessListener(ok)
+                .addOnFailureListener(err);
+    }
+
+    public void deleteTaskWithRule(Task t,
+                                   OnSuccessListener<Void> ok,
+                                   OnFailureListener err) {
+        if (t == null || t.id == null) { err.onFailure(new IllegalArgumentException("No task")); return; }
+        if ("done".equalsIgnoreCase(t.status) && !Boolean.TRUE.equals(t.recurring)) {
+            err.onFailure(new IllegalStateException("Cannot delete finished one-time task"));
+            return;
+        }
+        FirebaseFirestore.getInstance()
+                .collection("tasks").document(t.id)
+                .delete()
+                .addOnSuccessListener(ok)
+                .addOnFailureListener(err);
+    }
+
+    public void getTaskById(String taskId,
+                            OnSuccessListener<DocumentSnapshot> ok,
+                            OnFailureListener err) {
+        db.collection("tasks").document(taskId)
+                .get().addOnSuccessListener(ok).addOnFailureListener(err);
+    }
+
+    /** Parcijalni update (samo prosleđena polja) */
+    public void updateTaskFields(String taskId, Map<String, Object> updates,
+                                 OnSuccessListener<Void> ok,
+                                 OnFailureListener err) {
+        updates.put("updatedAt", System.currentTimeMillis());
+        db.collection("tasks").document(taskId)
+                .update(updates)
+                .addOnSuccessListener(ok)
+                .addOnFailureListener(err);
+    }
+
 }

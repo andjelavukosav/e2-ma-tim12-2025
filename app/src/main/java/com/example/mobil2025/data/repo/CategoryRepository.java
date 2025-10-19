@@ -209,7 +209,6 @@ public class CategoryRepository {
 
         db.collection("categories")
                 .whereEqualTo("ownerUid", uid)
-                .orderBy("name", Query.Direction.ASCENDING)
                 .get()
                 .addOnSuccessListener(qs -> ok.onSuccess(qs.toObjects(Category.class)))
                 .addOnFailureListener(err);

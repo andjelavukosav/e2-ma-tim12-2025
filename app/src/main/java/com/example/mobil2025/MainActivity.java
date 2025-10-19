@@ -12,6 +12,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.mobil2025.ui.auth.LoginActivity;
 import com.example.mobil2025.ui.category.CategoryListActivity;
+import com.example.mobil2025.ui.task.CalendarActivity;
 import com.example.mobil2025.ui.task.CreateTaskActivity;
 import com.example.mobil2025.ui.task.TaskListActivity;   // ✅ import liste zadataka
 import com.google.firebase.auth.FirebaseAuth;
@@ -24,6 +25,8 @@ public class MainActivity extends AppCompatActivity {
     private Button btnCreateTask;
     private Button btnShowTasks; // ✅ NOVO
 
+    private Button btnOpenCalendar;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -33,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
         btnOpenCategories = findViewById(R.id.btnOpenCategories);
         btnCreateTask = findViewById(R.id.btnCreateTask);
         btnShowTasks = findViewById(R.id.btnShowTasks); // ✅
+        btnOpenCalendar = findViewById(R.id.btnOpenCalendar); // ✅
 
         btnCreateTask.setOnClickListener(v ->
                 startActivity(new Intent(this, CreateTaskActivity.class)));
@@ -43,6 +47,9 @@ public class MainActivity extends AppCompatActivity {
         // ✅ Otvori listu zadataka
         btnShowTasks.setOnClickListener(v ->
                 startActivity(new Intent(this, TaskListActivity.class)));
+
+        btnOpenCalendar.setOnClickListener(v ->
+                startActivity(new Intent(this, CalendarActivity.class)));
 
         btnLogout.setOnClickListener(v -> {
             FirebaseAuth.getInstance().signOut();

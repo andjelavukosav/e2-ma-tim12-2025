@@ -18,6 +18,7 @@ import com.google.firebase.firestore.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class TaskListActivity extends AppCompatActivity {
 
@@ -49,24 +50,15 @@ public class TaskListActivity extends AppCompatActivity {
             it.putExtra("taskId", t.id);
             startActivity(it);
         });
-
         rvTasks.setAdapter(adapter);
 
         String uid = FirebaseAuth.getInstance().getUid();
         if (uid != null) {
+            // ✅ ispravljeno: listenTasksForUser (ne plural)
             reg = repo.listenTasksForUsers(uid, (QuerySnapshot snapshot, FirebaseFirestoreException e) -> {
                 if (e != null || snapshot == null) return;
                 all.clear();
                 all.addAll(snapshot.toObjects(Task.class));
-
-                // Sortiraj (kao što si već imala): po sledećem roku
-                all.sort((a, b) -> {
-                    long na = a.recurring ? (a.nextDueAt != null && a.nextDueAt > 0 ? a.nextDueAt : Long.MAX_VALUE) : a.dueTime;
-                    long nb = b.recurring ? (b.nextDueAt != null && b.nextDueAt > 0 ? b.nextDueAt : Long.MAX_VALUE) : b.dueTime;
-                    return Long.compare(na, nb);
-                });
-
-                // filtriraj listu za oba taba
                 rebuildFiltersAndShow();
             });
         }
@@ -84,13 +76,44 @@ public class TaskListActivity extends AppCompatActivity {
         if (reg != null) reg.remove();
     }
 
+    /** Filtriraj tako da lista prikazuje SAMO sadašnje i buduće zadatke. */
     private void rebuildFiltersAndShow() {
         singles.clear();
         recurs.clear();
+
+        long now = System.currentTimeMillis();
+
         for (Task t : all) {
-            if (t.recurring) recurs.add(t);
-            else singles.add(t);
+            // po želji: preskoči otkazane iz liste
+            boolean canceled = "canceled".equalsIgnoreCase(t.status);
+
+            if (Boolean.TRUE.equals(t.recurring)) {
+                // PONAVLJAJUĆI: prikazuj u listi ako raspored i dalje važi (nema kraja ili kraj ≥ sada)
+                // i ako postoji smislen nextDueAt u budućnosti/sada
+                boolean notEnded = (t.endDate == 0L) || (t.endDate >= now);
+                boolean hasNext = (t.nextDueAt != null && t.nextDueAt > 0);
+                if (!canceled && notEnded && hasNext && t.nextDueAt >= now) {
+                    recurs.add(t);
+                }
+            } else {
+                // JEDNOKRATNI: prikazuj samo ako je rok sada ili u budućnosti
+                boolean futureOrNow = (t.dueTime >= now);
+                // po želji iz liste izbaci "done" (uradjene) — jer su prošli (ili odmah nestaju kad prodje vreme)
+                boolean notDone = !"done".equalsIgnoreCase(t.status);
+                if (!canceled && futureOrNow && notDone) {
+                    singles.add(t);
+                }
+            }
         }
+
+        // Sortiraj po narednom roku (manje -> pre)
+        singles.sort((a, b) -> Long.compare(a.dueTime, b.dueTime));
+        recurs.sort((a, b) -> {
+            long na = (a.nextDueAt != null && a.nextDueAt > 0) ? a.nextDueAt : Long.MAX_VALUE;
+            long nb = (b.nextDueAt != null && b.nextDueAt > 0) ? b.nextDueAt : Long.MAX_VALUE;
+            return Long.compare(na, nb);
+        });
+
         showCurrentTab();
     }
 
@@ -104,7 +127,6 @@ public class TaskListActivity extends AppCompatActivity {
     }
 
     private void showStatusSheet(Task t) {
-        // vrlo jednostavno: AlertDialog sa listom statusa
         String[] opts = new String[] { "Aktivno", "Urađeno", "Pauzirano", "Otkazano" };
         String[] values = new String[] { "active", "done", "paused", "canceled" };
 

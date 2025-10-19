@@ -4,69 +4,178 @@
     android:padding="16dp">
 
     <LinearLayout
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical" android:layout_width="match_parent"
+        android:layout_height="wrap_content">
 
-        <TextView android:text="Naziv" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        <TextView android:id="@+id/tvName" android:textStyle="bold" android:textSize="18sp"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-
-        <TextView android:text="Opis" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"/>
-        <TextView android:id="@+id/tvDesc" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-
-        <TextView android:text="Kategorija" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"/>
-        <TextView android:id="@+id/tvCategory" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-
-        <TextView android:text="Tip" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"/>
-        <TextView android:id="@+id/tvType" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-
-        <!-- Jednokratni -->
-        <LinearLayout android:id="@+id/boxSingle"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:layout_marginTop="8dp">
-            <TextView android:text="Rok" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-            <TextView android:id="@+id/tvDue" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        </LinearLayout>
-
-        <!-- Ponavljajući -->
-        <LinearLayout android:id="@+id/boxRecurring"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:layout_marginTop="8dp">
-            <TextView android:text="Početak — Kraj" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-            <TextView android:id="@+id/tvRange" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-
-            <TextView android:text="Pravilo" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"/>
-            <TextView android:id="@+id/tvRule" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-
-            <TextView android:text="Sledeće pojave" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"/>
-            <TextView android:id="@+id/tvNexts" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        </LinearLayout>
-
-        <!-- Status -->
-        <TextView android:text="Status" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"/>
-        <Spinner
-            android:id="@+id/spStatus"
+        <!-- Naslov + status -->
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
-            android:layout_height="48dp"/>
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
 
+            <LinearLayout
+                android:padding="12dp"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    android:id="@+id/tvName"
+                    android:textStyle="bold"
+                    android:textSize="20sp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+
+                <TextView
+                    android:id="@+id/tvStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="13sp"
+                    android:alpha="0.8"
+                    android:layout_marginTop="4dp"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Opis -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:padding="12dp"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    android:text="Opis"
+                    android:textStyle="bold"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+
+                <TextView
+                    android:id="@+id/tvDesc"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Kategorija + boja -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:padding="12dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <View
+                    android:id="@+id/viewCategoryColor"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="@android:color/darker_gray"/>
+
+                <TextView
+                    android:id="@+id/tvCategory"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Vreme / Raspored -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:padding="12dp"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    android:text="Vremenski detalji"
+                    android:textStyle="bold"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+
+                <TextView
+                    android:id="@+id/tvTiming"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Akcije statusa -->
         <LinearLayout
             android:orientation="horizontal"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:weightSum="4"
             android:layout_marginTop="8dp">
 
-            <Button android:id="@+id/btnSaveStatus" android:layout_width="0dp" android:layout_height="48dp"
-                android:layout_weight="1" android:text="Sačuvaj status"/>
+            <Button
+                android:id="@+id/btnActive"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Aktivno"/>
 
-            <Space android:layout_width="8dp" android:layout_height="0dp"/>
+            <Button
+                android:id="@+id/btnDone"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Urađeno"
+                android:layout_marginStart="8dp"/>
 
-            <Button android:id="@+id/btnMarkDone" android:layout_width="0dp" android:layout_height="48dp"
-                android:layout_weight="1" android:text="Označi kao urađeno"/>
+            <Button
+                android:id="@+id/btnPaused"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Pauzirano"
+                android:layout_marginStart="8dp"/>
+
+            <Button
+                android:id="@+id/btnCanceled"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Otkazano"
+                android:layout_marginStart="8dp"/>
+        </LinearLayout>
+
+        <!-- Uredi / Obriši -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:layout_marginTop="12dp">
+
+            <Button
+                android:id="@+id/btnEdit"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="Uredi"/>
+
+            <Button
+                android:id="@+id/btnDelete"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="Obriši"
+                android:layout_marginStart="16dp"/>
         </LinearLayout>
 
     </LinearLayout>

@@ -47,6 +47,10 @@
             android:name=".ui.task.TaskListActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".ui.task.CalendarActivity"
+            android:exported="false" />
+
 
     </application>
 
