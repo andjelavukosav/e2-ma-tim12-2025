@@ -7,6 +7,7 @@ public class UserProfile {
     public String avatarKey;  // IMMUTABLE (npr. "avatar_1")
     public long createdAt;
     public boolean enabled;   // ✅ novo polje
+    public int xp;
 
     // Prazan konstruktor potreban Firestore-u
     public UserProfile() {}
@@ -19,6 +20,7 @@ public class UserProfile {
         this.avatarKey = avatarKey;
         this.createdAt = createdAt;
         this.enabled = true; // podrazumevano aktivan
+        this.xp = 0; // inicijalno
     }
 
     // ✅ Ako želiš dodatni konstruktor sa kontrolom enable polja:
@@ -29,5 +31,6 @@ public class UserProfile {
         this.avatarKey = avatarKey;
         this.createdAt = createdAt;
         this.enabled = enabled;
+        this.xp = 0; // inicijalno
     }
 }

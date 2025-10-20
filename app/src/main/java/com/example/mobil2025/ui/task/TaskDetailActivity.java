@@ -17,6 +17,7 @@ import com.example.mobil2025.R;
 import com.example.mobil2025.data.repo.CategoryRepository;
 import com.example.mobil2025.data.repo.OccurrenceRepository;
 import com.example.mobil2025.data.repo.TaskRepository;
+import com.example.mobil2025.data.repo.UserRepository;
 import com.example.mobil2025.model.Category;
 import com.example.mobil2025.model.Occurrence;
 import com.example.mobil2025.model.Task;
@@ -227,43 +228,75 @@ public class TaskDetailActivity extends AppCompatActivity {
         if (current == null || current.id == null) return;
         if (!canChangeStatus(status)) return;
 
-        if ("done".equals(status) && Boolean.TRUE.equals(current.recurring)) {
-            long when = getIntent().getLongExtra("occurrenceAt", 0L);
-            if (when <= 0) {
-                Toast.makeText(this, "Nedostaje datum pojave (otvori iz kalendara).", Toast.LENGTH_LONG).show();
+        long totalXP = current.totalXP; // XP zadatka
+
+        if ("done".equals(status)) {
+            // 1) Dodaj XP korisniku
+            String uid = getCurrentUserUid(); // metoda koja vraća UID prijavljenog korisnika
+            if (uid != null) {
+                new UserRepository().addXP(uid, totalXP, new UserRepository.OnCompleteListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(TaskDetailActivity.this, "Dobili ste " + totalXP + " XP!", Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        Toast.makeText(TaskDetailActivity.this, "Greška pri dodavanju XP: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+
+            // 2) Obradi ponavljajuće zadatke
+            if (Boolean.TRUE.equals(current.recurring)) {
+                long when = getIntent().getLongExtra("occurrenceAt", 0L);
+                if (when <= 0) {
+                    Toast.makeText(this, "Nedostaje datum pojave (otvori iz kalendara).", Toast.LENGTH_LONG).show();
+                    return;
+                }
+
+                Occurrence oc = new Occurrence();
+                oc.taskId = current.id;
+                oc.startAt = when;
+                oc.endAt = when + 60 * 60 * 1000; // trajanje 1h, možeš prilagoditi
+                oc.status = "done";
+                oc.name = current.name;
+                oc.description = current.description;
+                oc.categoryId = current.categoryId;
+                oc.categoryColorHex = guessCategoryColor(current.categoryId);
+                oc.tz = current.tz;
+
+                new OccurrenceRepository().addOccurrence(oc,
+                        ref -> new TaskRepository().updateTaskStatus(current.id, "active",
+                                v -> Toast.makeText(this, "Pojava zabeležena kao urađena", Toast.LENGTH_SHORT).show(),
+                                e -> Toast.makeText(this, "Greška: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                        ),
+                        e -> Toast.makeText(this, "Greška: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                );
                 return;
             }
-            // 1) Upis occurrence-a
-            Occurrence oc = new Occurrence();
-            oc.taskId = current.id;
-            oc.startAt = when;
-            oc.endAt = when + 60 * 60 * 1000; // ako imaš per-task trajanje, zameni
-            oc.status = "done";
-            oc.name = current.name;
-            oc.description = current.description;
-            oc.categoryId = current.categoryId;
-            oc.categoryColorHex = guessCategoryColor(current.categoryId); // vidi helper ispod
-            oc.tz = current.tz;
 
-            new OccurrenceRepository().addOccurrence(oc,
-                    ref -> {
-                        // 2) Status taska može ostati "active" (jer je to ponavljajući),
-                        //    ili po tvojoj logici. Obično se schedule ne gasi.
-                        //    Ako želiš da update-uješ status glavnog taska:
-                        new TaskRepository().updateTaskStatus(current.id, "active", // ili ostavi kakav jeste
-                                v -> Toast.makeText(this, "Pojava zabeležena kao urađena", Toast.LENGTH_SHORT).show(),
-                                e -> Toast.makeText(this, "Greška: " + e.getMessage(), Toast.LENGTH_LONG).show());
-                    },
+            // 3) Jednokratni zadaci
+            new TaskRepository().updateTaskStatus(current.id, "done",
+                    v -> Toast.makeText(this, "Zadatak označen kao urađen", Toast.LENGTH_SHORT).show(),
                     e -> Toast.makeText(this, "Greška: " + e.getMessage(), Toast.LENGTH_LONG).show()
             );
+
             return;
         }
 
-        // Jednokratni ili promene statusa koje nisu "done"…
+        // 4) Promene statusa koje nisu "done"
         new TaskRepository().updateTaskStatus(current.id, status,
                 v -> Toast.makeText(this, "Status ažuriran", Toast.LENGTH_SHORT).show(),
-                e -> Toast.makeText(this, "Greška: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                e -> Toast.makeText(this, "Greška: " + e.getMessage(), Toast.LENGTH_LONG).show()
+        );
     }
+
+    private String getCurrentUserUid() {
+        var user = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        return user != null ? user.getUid() : null;
+    }
+
 
     private String guessCategoryColor(String categoryId) {
         Category c = /* ako u detalju imaš mapu id->Category */ null;
