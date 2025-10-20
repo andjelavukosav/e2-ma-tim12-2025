@@ -5,6 +5,7 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.SetOptions;
@@ -56,5 +57,18 @@ public class UserRepository {
 
             return null;
         }).addOnSuccessListener(ok).addOnFailureListener(err);
+    }
+
+    public void addXP(String uid, long xpToAdd, OnCompleteListener listener) {
+        DocumentReference ref = db.collection("users").document(uid);
+        ref.update("xp", FieldValue.increment(xpToAdd))
+                .addOnSuccessListener(v -> listener.onSuccess())
+                .addOnFailureListener(e -> listener.onFailure(e));
+    }
+
+    // Definiši interfejs za callback
+    public interface OnCompleteListener {
+        void onSuccess();
+        void onFailure(Exception e);
     }
 }
