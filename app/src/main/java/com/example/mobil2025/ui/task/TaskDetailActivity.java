@@ -1,6 +1,5 @@
 package com.example.mobil2025.ui.task;
 
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
@@ -10,21 +9,19 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.mobil2025.R;
 import com.example.mobil2025.data.repo.CategoryRepository;
-import com.example.mobil2025.data.repo.OccurrenceRepository;
 import com.example.mobil2025.data.repo.TaskRepository;
-import com.example.mobil2025.data.repo.UserRepository;
 import com.example.mobil2025.model.Category;
-import com.example.mobil2025.model.Occurrence;
+import com.example.mobil2025.model.OccurrenceInterval;
 import com.example.mobil2025.model.Task;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
@@ -33,9 +30,6 @@ public class TaskDetailActivity extends AppCompatActivity {
 
     private TextView tvName, tvDesc, tvCategory, tvStatus, tvTiming;
     private Button btnActive, btnDone, btnPaused, btnCanceled, btnEdit, btnDelete;
-    private final OccurrenceRepository occRepo = new OccurrenceRepository();
-    private Occurrence currentOccurrence; // drži trenutnu occurrence ako task ne postoji
-    private boolean isDeletedTask = false;
     private TextView tvXP;
 
     private String taskId;
@@ -124,9 +118,6 @@ public class TaskDetailActivity extends AppCompatActivity {
         if (reg != null) reg.remove();
     }
 
-    // U TaskDetailActivity.java dodajte:
-// ...
-
     private void listenTask() {
         FirebaseFirestore.getInstance()
                 .collection("tasks").document(taskId)
@@ -136,42 +127,18 @@ public class TaskDetailActivity extends AppCompatActivity {
                     if (snap != null && snap.exists()) {
                         // Task je pronađen (živ)
                         current = snap.toObject(Task.class);
-                        isDeletedTask = false; // Resetuj flag
+                        // intervali već postoje u dokumentu, ne generišemo ništa
+                        // samo ih koristimo u updateStatus()
                         bind(current);
+
                     } else {
-                        // Task ne postoji → učitaj occurrence
-                        long occurrenceAt = getIntent().getLongExtra("occurrenceAt", System.currentTimeMillis());
-
-                        // Koristimo getOccurrenceByTaskId jer je to brža pretraga,
-                        // a u CalendarActivity smo se pobrinuli da Task i Occurrence
-                        // za isti dan ne budu prikazani istovremeno.
-                        occRepo.getOccurrenceByTaskId(taskId, occ -> {
-                            if (occ != null) {
-                                currentOccurrence = occ;
-                                Task temp = new Task();
-                                temp.id = occ.taskId; // Da bi bind() mogao prikazati detalje
-                                temp.name = occ.name;
-                                temp.description = occ.description;
-                                temp.categoryId = occ.categoryId;
-                                temp.status = occ.status;
-                                temp.recurring = false;
-
-                                // Ažurirajte globalni objekat 'current' sa podacima iz Occurrence
-                                current = temp;
-                                isDeletedTask = true; // Task je obrisan, ovo je samo prikaz!
-
-                                bind(current);
-                            } else {
-                                Toast.makeText(this, "Task nije pronađen", Toast.LENGTH_LONG).show();
-                                finish();
-                            }
-                        }, err -> {
-                            Toast.makeText(this, "Greška pri učitavanju zadatka: " + err.getMessage(), Toast.LENGTH_LONG).show();
-                            finish();
-                        });
+                        // Task ne postoji
+                        Toast.makeText(this, "Task nije pronađen", Toast.LENGTH_LONG).show();
+                        finish();
                     }
                 });
     }
+
 
     private void bind(Task t) {
         if (t == null) return;
@@ -180,7 +147,11 @@ public class TaskDetailActivity extends AppCompatActivity {
         tvDesc.setText(notEmpty(t.description) ? t.description : "—");
 
         // status (možeš obojiti)
-        tvStatus.setText("Status: " + notNull(t.status));
+        String statusText = Boolean.TRUE.equals(t.recurring)
+                ? getIntervalStatusForCurrentOccurrence()
+                : notNull(t.status);
+
+        tvStatus.setText("Status: " + statusText);
 
         // kategorija + boja
         Category c = t.categoryId != null ? cats.get(t.categoryId) : null;
@@ -224,135 +195,192 @@ public class TaskDetailActivity extends AppCompatActivity {
 
     }
 
-    private void updateStatus(String status) {
+    private void updateStatus(String newStatus) {
         if (current == null || current.id == null) return;
-        if (!canChangeStatus(status)) return;
 
-        long totalXP = current.totalXP; // XP zadatka
+        long now = System.currentTimeMillis();
+        long threeDaysAgo = now - 3L * 24 * 60 * 60 * 1000;
+        long occurrenceAt = getIntent().getLongExtra("occurrenceAt", 0L);
 
-        if ("done".equals(status)) {
-            // 1) Dodaj XP korisniku
-            String uid = getCurrentUserUid(); // metoda koja vraća UID prijavljenog korisnika
-            if (uid != null) {
-                new UserRepository().addXP(uid, totalXP, new UserRepository.OnCompleteListener() {
-                    @Override
-                    public void onSuccess() {
-                        Toast.makeText(TaskDetailActivity.this, "Dobili ste " + totalXP + " XP!", Toast.LENGTH_SHORT).show();
-                    }
+        // 🔹 Ako pokušavaš da označiš kao "done", a vreme još nije prošlo → zabrani
+        long relevantTime = 0L;
+        if (Boolean.TRUE.equals(current.recurring)) {
+            relevantTime = occurrenceAt;
+        } else if (current.dueTime != null) {
+            relevantTime = current.dueTime;
+        }
 
-                    @Override
-                    public void onFailure(Exception e) {
-                        Toast.makeText(TaskDetailActivity.this, "Greška pri dodavanju XP: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    }
-                });
-            }
-
-            // 2) Obradi ponavljajuće zadatke
-            if (Boolean.TRUE.equals(current.recurring)) {
-                long when = getIntent().getLongExtra("occurrenceAt", 0L);
-                if (when <= 0) {
-                    Toast.makeText(this, "Nedostaje datum pojave (otvori iz kalendara).", Toast.LENGTH_LONG).show();
-                    return;
-                }
-
-                Occurrence oc = new Occurrence();
-                oc.taskId = current.id;
-                oc.startAt = when;
-                oc.endAt = when + 60 * 60 * 1000; // trajanje 1h, možeš prilagoditi
-                oc.status = "done";
-                oc.name = current.name;
-                oc.description = current.description;
-                oc.categoryId = current.categoryId;
-                oc.categoryColorHex = guessCategoryColor(current.categoryId);
-                oc.tz = current.tz;
-
-                new OccurrenceRepository().addOccurrence(oc,
-                        ref -> new TaskRepository().updateTaskStatus(current.id, "active",
-                                v -> Toast.makeText(this, "Pojava zabeležena kao urađena", Toast.LENGTH_SHORT).show(),
-                                e -> Toast.makeText(this, "Greška: " + e.getMessage(), Toast.LENGTH_LONG).show()
-                        ),
-                        e -> Toast.makeText(this, "Greška: " + e.getMessage(), Toast.LENGTH_LONG).show()
-                );
-                return;
-            }
-
-            // 3) Jednokratni zadaci
-            new TaskRepository().updateTaskStatus(current.id, "done",
-                    v -> Toast.makeText(this, "Zadatak označen kao urađen", Toast.LENGTH_SHORT).show(),
-                    e -> Toast.makeText(this, "Greška: " + e.getMessage(), Toast.LENGTH_LONG).show()
-            );
-
+        if ("done".equals(newStatus) && relevantTime > now) {
+            Toast.makeText(this, "Zadatak se može označiti kao urađen tek nakon isteka vremena izvršenja.", Toast.LENGTH_LONG).show();
             return;
         }
 
-        // 4) Promene statusa koje nisu "done"
-        new TaskRepository().updateTaskStatus(current.id, status,
-                v -> Toast.makeText(this, "Status ažuriran", Toast.LENGTH_SHORT).show(),
+        // 🔹 Ponavljajući zadaci (sa intervalima)
+        if (Boolean.TRUE.equals(current.recurring) && current.intervals != null && occurrenceAt > 0) {
+
+            boolean intervalFound = false;
+
+            for (OccurrenceInterval interval : current.intervals) {
+
+                // ⏳ automatski označi istekle intervale kao not_done
+                if ("active".equalsIgnoreCase(interval.status) && interval.date < threeDaysAgo) {
+                    interval.status = "not_done";
+                }
+
+                // 🟢 ako je trenutni interval, ažuriraj njegov status
+                if (isSameDay(interval.date, occurrenceAt)) {
+                    intervalFound = true;
+
+                    // ako pokušavaš da označiš kao urađen pre vremena, spreči
+                    if ("done".equals(newStatus) && interval.date > now) {
+                        Toast.makeText(this, "Ova pojava još nije završena — ne može biti označena kao urađena.", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+
+                    if (!"not_done".equalsIgnoreCase(interval.status)) {
+                        interval.status = newStatus;
+                    }
+                }
+            }
+
+            if (!intervalFound) {
+                Toast.makeText(this, "Interval za ovu pojavu nije pronađen.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // 🔸 Update Firestore-a
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("intervals", current.intervals);
+
+            Long nextDue = current.intervals.stream()
+                    .filter(i -> "active".equalsIgnoreCase(i.status))
+                    .map(i -> i.date)
+                    .min(Long::compareTo)
+                    .orElse(-1L);
+            updates.put("nextDueAt", nextDue);
+            updates.put("updatedAt", now);
+
+            taskRepo.updateTaskFields(current.id, updates,
+                    v -> {
+                        Toast.makeText(this, "Status intervala ažuriran.", Toast.LENGTH_SHORT).show();
+                        bind(current);
+                    },
+                    e -> Toast.makeText(this, "Greška pri update-u intervala: " + e.getMessage(), Toast.LENGTH_LONG).show()
+            );
+            return;
+        }
+
+        // 🔹 Jednokratni zadaci
+        if ("active".equals(current.status) && relevantTime > 0 && relevantTime < threeDaysAgo) {
+            new TaskRepository().updateTaskStatus(current.id, "not_done",
+                    v -> {
+                        Toast.makeText(this, "Zadatak je istekao i označen kao neurađen.", Toast.LENGTH_SHORT).show();
+                        bind(current);
+                    },
+                    e -> Toast.makeText(this, "Greška pri update-u zadatka: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+            );
+            return;
+        }
+
+        // 🔹 Normalno menjanje statusa
+        taskRepo.updateTaskStatus(current.id, newStatus,
+                v -> {
+                    Toast.makeText(this, "Status zadatka ažuriran", Toast.LENGTH_SHORT).show();
+                    bind(current);
+                },
                 e -> Toast.makeText(this, "Greška: " + e.getMessage(), Toast.LENGTH_LONG).show()
         );
     }
 
-    private String getCurrentUserUid() {
-        var user = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
-        return user != null ? user.getUid() : null;
+    private boolean isSameDay(long t1, long t2) {
+        Calendar c1 = Calendar.getInstance();
+        c1.setTimeInMillis(t1);
+        Calendar c2 = Calendar.getInstance();
+        c2.setTimeInMillis(t2);
+        return c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR)
+                && c1.get(Calendar.MONTH) == c2.get(Calendar.MONTH)
+                && c1.get(Calendar.DAY_OF_MONTH) == c2.get(Calendar.DAY_OF_MONTH);
     }
 
 
-    private String guessCategoryColor(String categoryId) {
-        Category c = /* ako u detalju imaš mapu id->Category */ null;
-        // ili po potrebi vrati default:
-        return "#607D8B";
-    }
 
     private boolean canChangeStatus(String newStatus) {
         if (current == null) return false;
 
         long now = System.currentTimeMillis();
+        long threeDaysAgo = now - (3L * 24 * 60 * 60 * 1000);
 
-        // ⏱ Relevantno vreme za proveru:
-        // - jednokratni zadatak -> dueTime
-        // - ponavljajući zadatak -> datum pojedinačne pojave (occurrenceAt)
         long relevantTime;
+
         if (Boolean.TRUE.equals(current.recurring)) {
+            // Za ponavljajuće zadatke uzimamo datum trenutnog intervala
             relevantTime = getIntent().getLongExtra("occurrenceAt", 0L);
             if (relevantTime <= 0L) {
                 Toast.makeText(this, "Nedostaje datum pojave (otvori iz kalendara).", Toast.LENGTH_LONG).show();
                 return false;
             }
-        } else {
-            relevantTime = current.dueTime != null ? current.dueTime : 0L;
-        }
 
-        // ⏰ Zadaci stariji od 3 dana postaju neurađeni (samo aktivni)
-        if ("active".equals(current.status) && relevantTime > 0) {
-            long threeDaysAgo = now - (3 * 24 * 60 * 60 * 1000);
+            // Provera da li je interval istekao
             if (relevantTime < threeDaysAgo) {
-                new TaskRepository().updateTaskStatus(current.id, "not_done",
-                        v -> Toast.makeText(this, "Zadatak automatski označen kao neurađen", Toast.LENGTH_SHORT).show(),
-                        e -> {});
-                return false;
+                // Update samo intervala ili celog taska sa starim intervalima
+                if (Boolean.TRUE.equals(current.recurring)) {
+                    // Recurring zadaci: update intervala
+                    if (current.intervals != null) {
+                        for (OccurrenceInterval interval : current.intervals) {
+                            if (interval.date == relevantTime && "active".equalsIgnoreCase(interval.status)) {
+                                interval.status = "not_done";
+                            }
+                        }
+
+                        Map<String, Object> updates = new HashMap<>();
+                        updates.put("intervals", current.intervals);
+
+                        new TaskRepository().updateTaskFields(current.id, updates,
+                                v -> Toast.makeText(this, "Ovaj interval je istekao i označen kao neurađen.", Toast.LENGTH_SHORT).show(),
+                                e -> Toast.makeText(this, "Greška pri update-u intervala.", Toast.LENGTH_SHORT).show()
+                        );
+                    }
+                } else {
+                    // Jednokratni zadaci
+                    new TaskRepository().updateTaskStatus(current.id, "not_done",
+                            v -> Toast.makeText(this, "Zadatak je istekao i označen kao neurađen.", Toast.LENGTH_SHORT).show(),
+                            e -> Toast.makeText(this, "Greška pri update-u zadatka.", Toast.LENGTH_SHORT).show()
+                    );
+                }
+
+                return false; // onemogući dalju promenu jer je već automatski označen
+            }
+
+
+        } else {
+            // Jednokratni zadatak
+            relevantTime = current.dueTime != null ? current.dueTime : 0L;
+
+            if ("active".equals(current.status) && relevantTime > 0 && relevantTime < threeDaysAgo) {
+                Toast.makeText(this, "Zadatak je istekao i automatski se smatra neurađenim.", Toast.LENGTH_SHORT).show();
+                return false; // blokira promenu, ne menja status u bazi
             }
         }
 
-        // ❌ Neurađeni i otkazani se ne mogu menjati
+        // Neurađeni i otkazani zadaci se ne mogu menjati
         if ("not_done".equals(current.status) || "canceled".equals(current.status)) {
             Toast.makeText(this, "Ovaj zadatak se ne može više menjati.", Toast.LENGTH_SHORT).show();
             return false;
         }
 
-        // 🟢 Samo aktivan ili pauziran može biti menjan
+        // Samo aktivan ili pauziran može biti menjan
         if (!"active".equals(current.status) && !"paused".equals(current.status)) {
             Toast.makeText(this, "Samo aktivan ili pauziran zadatak se može menjati.", Toast.LENGTH_SHORT).show();
             return false;
         }
 
-        // ⏳ Zadatak se može označiti kao urađen tek nakon isteka vremena izvršenja
+        // Zadatak se može označiti kao urađen tek nakon isteka vremena izvršenja
         if ("done".equals(newStatus) && relevantTime > now) {
             Toast.makeText(this, "Zadatak se može označiti kao urađen tek nakon isteka vremena izvršenja.", Toast.LENGTH_LONG).show();
             return false;
         }
 
-        // ⏸ Pauziranje samo za ponavljajuće zadatke
+        // Pauziranje samo za ponavljajuće zadatke
         if ("paused".equals(newStatus) && !Boolean.TRUE.equals(current.recurring)) {
             Toast.makeText(this, "Samo ponavljajući zadaci mogu biti pauzirani.", Toast.LENGTH_SHORT).show();
             return false;
@@ -361,21 +389,38 @@ public class TaskDetailActivity extends AppCompatActivity {
         return true;
     }
 
-
-
     private void updateButtonsVisibility(Task t) {
+        String status = Boolean.TRUE.equals(t.recurring) ? getIntervalStatusForCurrentOccurrence() : notNull(t.status);
+
         btnActive.setEnabled(false);
         btnDone.setEnabled(false);
         btnPaused.setEnabled(false);
         btnCanceled.setEnabled(false);
 
-        if ("active".equals(t.status)) {
+        if ("active".equals(status)) {
             btnDone.setEnabled(true);
             btnCanceled.setEnabled(true);
             if (Boolean.TRUE.equals(t.recurring)) btnPaused.setEnabled(true);
-        } else if ("paused".equals(t.status)) {
+        } else if ("paused".equals(status)) {
             btnActive.setEnabled(true); // dozvoli ponovno aktiviranje
         }
+
+    }
+
+    private String getIntervalStatusForCurrentOccurrence() {
+        if (current == null || !Boolean.TRUE.equals(current.recurring) || current.intervals == null)
+            return current != null ? notNull(current.status) : "—";
+
+        long occurrenceAt = getIntent().getLongExtra("occurrenceAt", 0L);
+        if (occurrenceAt <= 0) return notNull(current.status);
+
+        for (OccurrenceInterval interval : current.intervals) {
+            if (isSameDay(interval.date, occurrenceAt)) {
+                return notNull(interval.status);
+            }
+        }
+
+        return notNull(current.status); // fallback
     }
 
 
