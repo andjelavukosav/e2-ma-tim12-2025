@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.mobil2025.R;
 import com.example.mobil2025.data.repo.CategoryRepository;
 import com.example.mobil2025.data.repo.TaskRepository;
+import com.example.mobil2025.data.repo.UserRepository;
 import com.example.mobil2025.model.Category;
 import com.example.mobil2025.model.OccurrenceInterval;
 import com.example.mobil2025.model.Task;
@@ -202,7 +203,7 @@ public class TaskDetailActivity extends AppCompatActivity {
         long threeDaysAgo = now - 3L * 24 * 60 * 60 * 1000;
         long occurrenceAt = getIntent().getLongExtra("occurrenceAt", 0L);
 
-        // 🔹 Ako pokušavaš da označiš kao "done", a vreme još nije prošlo → zabrani
+        // 🔹 Odredi relevantno vreme za task
         long relevantTime = 0L;
         if (Boolean.TRUE.equals(current.recurring)) {
             relevantTime = occurrenceAt;
@@ -210,28 +211,24 @@ public class TaskDetailActivity extends AppCompatActivity {
             relevantTime = current.dueTime;
         }
 
+        // 🔹 Spreči označavanje kao done pre vremena
         if ("done".equals(newStatus) && relevantTime > now) {
             Toast.makeText(this, "Zadatak se može označiti kao urađen tek nakon isteka vremena izvršenja.", Toast.LENGTH_LONG).show();
             return;
         }
 
-        // 🔹 Ponavljajući zadaci (sa intervalima)
+        // 🔹 Ponavljajući zadaci
         if (Boolean.TRUE.equals(current.recurring) && current.intervals != null && occurrenceAt > 0) {
-
             boolean intervalFound = false;
 
             for (OccurrenceInterval interval : current.intervals) {
-
-                // ⏳ automatski označi istekle intervale kao not_done
                 if ("active".equalsIgnoreCase(interval.status) && interval.date < threeDaysAgo) {
                     interval.status = "not_done";
                 }
 
-                // 🟢 ako je trenutni interval, ažuriraj njegov status
                 if (isSameDay(interval.date, occurrenceAt)) {
                     intervalFound = true;
 
-                    // ako pokušavaš da označiš kao urađen pre vremena, spreči
                     if ("done".equals(newStatus) && interval.date > now) {
                         Toast.makeText(this, "Ova pojava još nije završena — ne može biti označena kao urađena.", Toast.LENGTH_LONG).show();
                         return;
@@ -239,6 +236,22 @@ public class TaskDetailActivity extends AppCompatActivity {
 
                     if (!"not_done".equalsIgnoreCase(interval.status)) {
                         interval.status = newStatus;
+
+                        // 🔹 Dodaj XP korisniku ako je zadatak označen kao done
+                        if ("done".equals(newStatus) && current.ownerUid != null) {
+                            long xpToAdd = current.totalXP > 0 ? current.totalXP : 10L;
+                            new UserRepository().addXP(current.ownerUid, xpToAdd, new UserRepository.OnCompleteListener() {
+                                @Override
+                                public void onSuccess() {
+                                    Toast.makeText(TaskDetailActivity.this, xpToAdd + " XP dodato!", Toast.LENGTH_SHORT).show();
+                                }
+
+                                @Override
+                                public void onFailure(Exception e) {
+                                    Toast.makeText(TaskDetailActivity.this, "Greška pri dodavanju XP: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                }
+                            });
+                        }
                     }
                 }
             }
@@ -251,7 +264,6 @@ public class TaskDetailActivity extends AppCompatActivity {
             // 🔸 Update Firestore-a
             Map<String, Object> updates = new HashMap<>();
             updates.put("intervals", current.intervals);
-
             Long nextDue = current.intervals.stream()
                     .filter(i -> "active".equalsIgnoreCase(i.status))
                     .map(i -> i.date)
@@ -287,6 +299,22 @@ public class TaskDetailActivity extends AppCompatActivity {
                 v -> {
                     Toast.makeText(this, "Status zadatka ažuriran", Toast.LENGTH_SHORT).show();
                     bind(current);
+
+                    // 🔹 XP za jednokratne zadatke
+                    if ("done".equals(newStatus) && current.ownerUid != null) {
+                        long xpToAdd = current.totalXP > 0 ? current.totalXP : 10L;
+                        new UserRepository().addXP(current.ownerUid, xpToAdd, new UserRepository.OnCompleteListener() {
+                            @Override
+                            public void onSuccess() {
+                                Toast.makeText(TaskDetailActivity.this, xpToAdd + " XP dodato!", Toast.LENGTH_SHORT).show();
+                            }
+
+                            @Override
+                            public void onFailure(Exception e) {
+                                Toast.makeText(TaskDetailActivity.this, "Greška pri dodavanju XP: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                            }
+                        });
+                    }
                 },
                 e -> Toast.makeText(this, "Greška: " + e.getMessage(), Toast.LENGTH_LONG).show()
         );
