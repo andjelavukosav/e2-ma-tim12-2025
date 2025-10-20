@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="24dp"
+    android:background="#f6f7fb">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal">
+
+        <!-- Avatar -->
+        <ImageView
+            android:id="@+id/imageAvatarOther"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@mipmap/ic_launcher"
+            android:contentDescription="Avatar korisnika"
+            android:background="@drawable/avatar_border"
+            android:padding="4dp"
+            android:scaleType="centerCrop" />
+
+        <!-- Username -->
+        <TextView
+            android:id="@+id/textUsernameOther"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Username"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:layout_marginTop="12dp" />
+
+        <!-- Titula -->
+        <TextView
+            android:id="@+id/textTitleOther"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Titula"
+            android:layout_marginTop="4dp" />
+
+        <!-- Nivo -->
+        <TextView
+            android:id="@+id/textLevelOther"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Level"
+            android:layout_marginTop="4dp" />
+
+        <!-- XP -->
+        <TextView
+            android:id="@+id/textXPOther"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="XP"
+            android:layout_marginTop="4dp" />
+
+        <!-- Bedževi -->
+        <TextView
+            android:id="@+id/textBadgesOther"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bedževi"
+            android:layout_marginTop="4dp" />
+
+        <!-- Oprema (trenutno korišćena) -->
+        <TextView
+            android:id="@+id/textEquipmentOther"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Oprema"
+            android:layout_marginTop="4dp" />
+
+        <!-- QR kod -->
+        <ImageView
+            android:id="@+id/imageQRCodeOther"
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:layout_marginTop="12dp"
+            android:contentDescription="QR kod korisnika"
+            android:scaleType="centerInside"
+            android:src="@mipmap/ic_launcher" />
+
+        <!-- Opcionalno dugme: Dodaj za prijatelja -->
+        <Button
+            android:id="@+id/buttonAddFriendOther"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Dodaj za prijatelja"
+            android:layout_marginTop="16dp" />
+
+    </LinearLayout>
+</ScrollView>
