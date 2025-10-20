@@ -187,18 +187,24 @@ public class TaskRepository {
 
         if (Boolean.TRUE.equals(t.recurring)) {
             db.collection("occurrences")
-                    .whereEqualTo("ownerUid", uid)                 // ⬅️ ključno zbog rules (read)
+                    .whereEqualTo("ownerUid", uid)
                     .whereEqualTo("taskId", t.id)
-                    .whereGreaterThan("startAt", System.currentTimeMillis())
                     .get()
                     .addOnSuccessListener(snapshot -> {
-                        snapshot.getDocuments().forEach(doc -> doc.getReference().delete());
+                        long now = System.currentTimeMillis();
+                        snapshot.getDocuments().forEach(doc -> {
+                            Long startAt = doc.getLong("startAt");
+                            if (startAt != null && startAt > now) {
+                                doc.getReference().delete();
+                            }
+                        });
                         db.collection("tasks").document(t.id)
                                 .delete()
                                 .addOnSuccessListener(ok)
                                 .addOnFailureListener(err);
                     })
                     .addOnFailureListener(err);
+
         } else {
             db.collection("tasks").document(t.id)
                     .delete()
