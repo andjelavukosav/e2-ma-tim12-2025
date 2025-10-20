@@ -1,6 +1,7 @@
 package com.example.mobil2025.ui.profile;
 
 
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -14,6 +15,9 @@ import com.bumptech.glide.Glide;
 import com.example.mobil2025.R;
 import com.example.mobil2025.model.UserProfile;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.journeyapps.barcodescanner.BarcodeEncoder;
 
 import java.util.List;
 public class ProfileViewOtherActivity extends  AppCompatActivity{
@@ -86,15 +90,28 @@ public class ProfileViewOtherActivity extends  AppCompatActivity{
         textEquipment.setText("Oprema: " + equipped);
 
         loadAvatar(otherUser.avatarKey);
-        loadQRCode(otherUser.qrCodeUrl);
+        generateQRCode(otherUser.uid);
+    }
+
+
+    private void generateQRCode(String data) {
+        if (data == null || data.isEmpty()) {
+            imageQRCode.setImageResource(R.mipmap.ic_launcher); // fallback
+            return;
+        }
+
+        try {
+            BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
+            Bitmap bitmap = barcodeEncoder.encodeBitmap(data, BarcodeFormat.QR_CODE, 400, 400);
+            imageQRCode.setImageBitmap(bitmap);
+        } catch (WriterException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Greška pri generisanju QR koda", Toast.LENGTH_SHORT).show();
+        }
     }
     
     private void loadAvatar(String avatarKey) {
-        // Ovde možeš učitati lokalni resurs ili URL
-        // Za primer koristimo Glide sa URL
-        // Glide.with(this).load(urlAvatar).into(imageAvatar);
-        // Ako je samo lokalni drawable:
-        int resId = getResources().getIdentifier(avatarKey, "mipmap", getPackageName());
+        int resId = getResources().getIdentifier(avatarKey, "drawable", getPackageName());
         imageAvatar.setImageResource(resId);
     }
 

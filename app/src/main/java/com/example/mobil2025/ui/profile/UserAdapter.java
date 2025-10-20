@@ -45,7 +45,12 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.VH> {
         int resId = holder.imgAvatar.getContext()
                 .getResources()
                 .getIdentifier(u.avatarKey, "drawable", holder.imgAvatar.getContext().getPackageName());
-        holder.imgAvatar.setImageResource(resId);
+        if (resId != 0) {
+            holder.imgAvatar.setImageResource(resId);
+        } else {
+            holder.imgAvatar.setImageResource(R.mipmap.ic_launcher);
+        }
+
         holder.itemView.setOnClickListener(v -> listener.onUserClick(u));
     }
 

@@ -2,7 +2,8 @@ package com.example.mobil2025.ui.profile;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.widget.SearchView;
+import androidx.appcompat.widget.SearchView;
+
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -12,6 +13,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mobil2025.R;
 import com.example.mobil2025.model.UserProfile;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +27,10 @@ public class UsersActivity extends AppCompatActivity {
     private UserAdapter adapter;
     private List<UserProfile> allUsers = new ArrayList<>();
     private String currentUsername;
+    private String currentUid;
+
+    private FirebaseAuth auth;
+
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -32,6 +40,7 @@ public class UsersActivity extends AppCompatActivity {
         initViews();
         initAdapter();
         loadCurrentUser();
+        loadUsersFromFirebase();
         setupSearch();
     }
 
@@ -54,20 +63,41 @@ public class UsersActivity extends AppCompatActivity {
     }
 
     private void loadCurrentUser() {
-        currentUsername = getSharedPreferences("my_app_prefs", MODE_PRIVATE)
-                .getString("username", "");
+        auth = FirebaseAuth.getInstance();        // inicijalizacija auth objekta
+        currentUid = auth.getCurrentUser().getUid();  // dohvat UID-a trenutno ulogovanog korisnika
     }
+
+
+    private void loadUsersFromFirebase() {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        db.collection("users")
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    List<UserProfile> users = new ArrayList<>();
+                    for (QueryDocumentSnapshot doc : querySnapshot) {
+                        UserProfile u = doc.toObject(UserProfile.class);
+                        if (u != null) users.add(u);
+                    }
+                    setUsers(users); // filtrira trenutno ulogovanog korisnika
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Greška pri učitavanju korisnika.", Toast.LENGTH_SHORT).show()
+                );
+    }
+
 
     private void setUsers(List<UserProfile> users) {
         List<UserProfile> filtered = new ArrayList<>();
         for (UserProfile u : users) {
-            if (!u.username.equalsIgnoreCase(currentUsername)) {
+            if (u.uid != null && !u.uid.equals(currentUid)) {  // filtriranje po UID
                 filtered.add(u);
             }
         }
         allUsers = filtered;
         adapter.updateList(allUsers);
     }
+
 
     private void setupSearch() {
         searchViewUsers.setOnQueryTextListener(new SearchView.OnQueryTextListener() {

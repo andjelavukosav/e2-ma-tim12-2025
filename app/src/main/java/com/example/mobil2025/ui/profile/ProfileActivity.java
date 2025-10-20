@@ -67,6 +67,7 @@ public class ProfileActivity extends AppCompatActivity {
         textQRCode = findViewById(R.id.textQRCode);
         buttonLogout = findViewById(R.id.buttonLogout);
         buttonChangePassword = findViewById(R.id.buttonChangePassword);
+        btnViewUsers = findViewById(R.id.buttonViewUsers);
     }
 
     private void loadUserProfile() {

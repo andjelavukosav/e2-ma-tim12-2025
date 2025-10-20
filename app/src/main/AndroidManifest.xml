@@ -37,6 +37,16 @@
         <activity
             android:name=".ui.profile.ChangePasswordActivity"
             android:exported="true" />
+
+        <activity
+            android:name=".ui.profile.UsersActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".ui.profile.ProfileViewOtherActivity"
+            android:exported="true" />
+
+
     </application>
 
 </manifest>
