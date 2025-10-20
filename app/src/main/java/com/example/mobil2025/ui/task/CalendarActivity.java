@@ -16,10 +16,9 @@ import com.applandeo.materialcalendarview.CalendarView;
 import com.applandeo.materialcalendarview.EventDay;
 import com.example.mobil2025.R;
 import com.example.mobil2025.data.repo.CategoryRepository;
-import com.example.mobil2025.data.repo.OccurrenceRepository;
 import com.example.mobil2025.data.repo.TaskRepository;
 import com.example.mobil2025.model.Category;
-import com.example.mobil2025.model.Occurrence;
+import com.example.mobil2025.model.OccurrenceInterval;
 import com.example.mobil2025.model.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.ListenerRegistration;
@@ -39,7 +38,6 @@ public class CalendarActivity extends AppCompatActivity {
     // Repo-i
     private final TaskRepository taskRepo = new TaskRepository();
     private final CategoryRepository categoryRepo = new CategoryRepository();
-    private final OccurrenceRepository occRepo = new OccurrenceRepository();
 
     // UI
     private CalendarView calendarView;
@@ -143,7 +141,6 @@ public class CalendarActivity extends AppCompatActivity {
 
     // -------------------- Calendar build --------------------
 
-    /** Izračunaj pojave (single + recurring) u prozoru -6m .. +6m i nacrtaj tačke. */
     private void rebuildCalendar() {
         tasksByDayKey.clear();
         List<EventDay> events = new ArrayList<>();
@@ -152,52 +149,23 @@ public class CalendarActivity extends AppCompatActivity {
         long from = now - SIX_MONTHS_MS;
         long to = now + SIX_MONTHS_MS;
 
-        // 1) Dodaj sve taskove
-        Set<String> addedTaskIds = new HashSet<>();
         for (Task t : allTasks) {
             Set<String> days = dayKeysForTaskInRange(t, from, to);
             int color = colorForCategory(t.categoryId);
 
             for (String k : days) {
                 tasksByDayKey.computeIfAbsent(k, z -> new ArrayList<>()).add(t);
-                addedTaskIds.add(t.id);
                 Calendar cal = keyToCalendar(k, appZone, appLocale);
                 events.add(new EventDay(cal, new ColorDrawable(color)));
             }
         }
 
-        // 2) Dodaj occurrence-e koji nisu već u task listi
-        occRepo.loadOccurrencesInRange(from, to, occs -> {
-            for (Occurrence oc : occs) {
-                if (addedTaskIds.contains(oc.taskId)) continue;
+        calendarView.setEvents(events);
 
-                String key = dayKey(oc.startAt, appZone, appLocale);
-                int color = Color.parseColor(oc.categoryColorHex != null ? oc.categoryColorHex : "#607D8B");
-                Calendar cal = keyToCalendar(key, appZone, appLocale);
-                events.add(new EventDay(cal, new ColorDrawable(color)));
-
-                Task t = new Task();
-                t.id = oc.taskId;
-                t.name = oc.name;
-                t.description = oc.description;
-                t.categoryId = oc.categoryId;
-                t.tz = oc.tz;
-                t.status = oc.status;
-
-                tasksByDayKey.computeIfAbsent(key, k -> new ArrayList<>()).add(t);
-            }
-
-
-            calendarView.setEvents(events);
-
-            // Prikaži za trenutno izabrani dan
-            String todayKey = dayKey(lastSelectedDay != null ? lastSelectedDay.getTimeInMillis() : System.currentTimeMillis(), appZone, appLocale);
-            briefAdapter.submit(tasksByDayKey.getOrDefault(todayKey, Collections.emptyList()));
-        }, err -> {
-            calendarView.setEvents(events);
-        });
+        // Prikaži za trenutno izabrani dan
+        String todayKey = dayKey(lastSelectedDay != null ? lastSelectedDay.getTimeInMillis() : System.currentTimeMillis(), appZone, appLocale);
+        briefAdapter.submit(tasksByDayKey.getOrDefault(todayKey, Collections.emptyList()));
     }
-
 
     // -------------------- Helpers --------------------
 
@@ -212,7 +180,6 @@ public class CalendarActivity extends AppCompatActivity {
         return Color.parseColor("#607D8B"); // default siva
     }
 
-    /** Kreira skup ključeva dana (yyyy-MM-dd) za single/recurring task u datom opsegu. */
     private Set<String> dayKeysForTaskInRange(Task t, long rangeStart, long rangeEnd) {
         Set<String> out = new HashSet<>();
         if (t == null) return out;
@@ -227,33 +194,20 @@ public class CalendarActivity extends AppCompatActivity {
             return out;
         }
 
-        // Ponavljajući: dnevno ili nedeljno u koraku intervala
-        int step = Math.max(1, t.recurrenceInterval);
-        boolean weekly = isWeekly(t.recurrenceUnit);
-
-        Calendar cur = Calendar.getInstance(zone, appLocale);
-        long start = (t.startDate > 0 ? t.startDate : rangeStart);
-        cur.setTimeInMillis(start);
-        setTimeOfDay(cur, t.timeOfDay);
-
-        long endLimit = (t.endDate > 0 ? alignEndToTod(t.endDate, t.timeOfDay, zone, appLocale) : Long.MAX_VALUE);
-
-        // preskoči do opsega
-        while (cur.getTimeInMillis() < rangeStart) {
-            if (weekly) cur.add(Calendar.WEEK_OF_YEAR, step);
-            else        cur.add(Calendar.DAY_OF_MONTH, step);
-            if (cur.getTimeInMillis() > endLimit) return out;
+        // Ponavljajući: koristi stvarne intervale iz baze, ne generiši ih
+        if (t.intervals != null) {
+            for (OccurrenceInterval i : t.intervals) {
+                if (i.status != null && !i.status.equalsIgnoreCase("deleted")) { // ili whatever logika za obrisane
+                    if (i.date >= rangeStart && i.date <= rangeEnd) {
+                        out.add(dayKey(i.date, zone, appLocale));
+                    }
+                }
+            }
         }
-        // skupljaj dok smo u opsegu
-        while (true) {
-            long s = cur.getTimeInMillis();
-            if (s > endLimit || s > rangeEnd) break;
-            out.add(dayKey(s, zone, appLocale));
-            if (weekly) cur.add(Calendar.WEEK_OF_YEAR, step);
-            else        cur.add(Calendar.DAY_OF_MONTH, step);
-        }
+
         return out;
     }
+
 
     private static boolean isWeekly(String u) {
         if (u == null) return false;

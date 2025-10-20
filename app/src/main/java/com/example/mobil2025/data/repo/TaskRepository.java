@@ -2,6 +2,7 @@ package com.example.mobil2025.data.repo;
 
 import androidx.annotation.NonNull;
 
+import com.example.mobil2025.model.OccurrenceInterval;
 import com.example.mobil2025.model.Task;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -19,8 +20,10 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TaskRepository {
 
@@ -31,23 +34,36 @@ public class TaskRepository {
                            @NonNull OnSuccessListener<Void> ok,
                            @NonNull OnFailureListener err) {
 
-        // Izračunaj vrednost zadatka
-        task.totalXP = (task.weightXP > 0 ? task.weightXP : 0) + (task.importanceXP > 0 ? task.importanceXP : 0);
+        // Izračunaj ukupnu XP vrednost
+        task.totalXP = (task.weightXP > 0 ? task.weightXP : 0) +
+                (task.importanceXP > 0 ? task.importanceXP : 0);
 
         String uid = FirebaseAuth.getInstance().getUid();
         if (uid == null) { err.onFailure(new IllegalStateException("Not signed in")); return; }
 
         long now = System.currentTimeMillis();
-        task.ownerUid = uid;                // ⬅️ obavezno
+        task.ownerUid = uid;
         task.createdAt = now;
         task.updatedAt = now;
         task.status = (task.status == null || task.status.isEmpty()) ? "active" : task.status;
 
+        // Ako je recurring, popuni intervale
         if (Boolean.TRUE.equals(task.recurring)) {
             if (task.tz == null || task.tz.isEmpty()) task.tz = TimeZone.getDefault().getID();
             if (task.timeOfDay == null || task.timeOfDay.isEmpty()) task.timeOfDay = "09:00";
-            task.nextDueAt = computeNextOccurrenceMillis(task, now);
+
+            task.intervals = new ArrayList<>();
+            long next = computeNextOccurrenceMillis(task, task.startDate != null ? task.startDate : now);
+
+            while (next != -1 && (task.endDate == null || next <= task.endDate)) {
+                task.intervals.add(new OccurrenceInterval(next, "active"));
+                next = computeNextOccurrenceMillis(task, next + 1000); // sledeća pojava
+            }
+
+            task.nextDueAt = task.intervals.isEmpty() ? -1L : task.intervals.get(0).date;
+
         } else {
+            // Jednokratni zadatak
             task.nextDueAt = task.dueTime;
         }
 
@@ -60,26 +76,6 @@ public class TaskRepository {
                 .addOnFailureListener(err);
     }
 
-    /** Označi jednu pojavu kao završenu — pomeri nextDueAt na sledeću (ili -1) */
-    public void completeOccurrence(@NonNull Task task,
-                                   @NonNull OnSuccessListener<Void> ok,
-                                   @NonNull OnFailureListener err) {
-        long now = System.currentTimeMillis();
-        Long next = Boolean.TRUE.equals(task.recurring) ? computeNextOccurrenceMillis(task, now) : -1L;
-
-        db.collection("tasks").document(task.id)
-                .update("nextDueAt", next,
-                        "updatedAt", FieldValue.serverTimestamp())
-                .addOnSuccessListener(ok)
-                .addOnFailureListener(err);
-    }
-
-    /** Real-time slušanje svih taskova korisnika (filtrirano po ownerUid) */
-    public void listenTasksForUser(@NonNull String uid, @NonNull EventListener<QuerySnapshot> listener) {
-        db.collection("tasks")
-                .whereEqualTo("ownerUid", uid)      // ⬅️ obavezno
-                .addSnapshotListener(listener);
-    }
 
     /** Isto kao gore, samo vraća ListenerRegistration */
     public ListenerRegistration listenTasksForUsers(@NonNull String uid,
@@ -89,27 +85,6 @@ public class TaskRepository {
                 .addSnapshotListener(listener);
     }
 
-    /** "Šta je danas" — denormalizovani prozor preko nextDueAt (već je ok) */
-    public void listenToday(@NonNull String uid, long dayStartUtc, long dayEndUtc,
-                            @NonNull EventListener<QuerySnapshot> listener) {
-        db.collection("tasks")
-                .whereEqualTo("ownerUid", uid)              // ⬅️ obavezno
-                .whereGreaterThanOrEqualTo("nextDueAt", dayStartUtc)
-                .whereLessThan("nextDueAt", dayEndUtc)
-                .addSnapshotListener(listener);
-    }
-
-    /** NOVO: Aktivni taskovi za *trenutnog* korisnika */
-    public ListenerRegistration listenActiveForCurrentUser(@NonNull EventListener<QuerySnapshot> listener,
-                                                           @NonNull OnFailureListener onAuthMissing) {
-        String uid = FirebaseAuth.getInstance().getUid();
-        if (uid == null) { onAuthMissing.onFailure(new IllegalStateException("Not signed in")); return null; }
-
-        return db.collection("tasks")
-                .whereEqualTo("ownerUid", uid)       // ⬅️ obavezno
-                .whereEqualTo("status", "active")
-                .addSnapshotListener(listener);
-    }
 
     // ============ Recurrence helperi (java.time) ============
 
@@ -175,7 +150,7 @@ public class TaskRepository {
     }
 
     /** Brisanje taska uz čišćenje budućih occurrences — dodaj ownerUid filter na query! */
-    public void deleteTaskWithRule(@NonNull Task t,
+    /*public void deleteTaskWithRule(@NonNull Task t,
                                    @NonNull OnSuccessListener<Void> ok,
                                    @NonNull OnFailureListener err) {
         if (t.id == null) { err.onFailure(new IllegalArgumentException("No task")); return; }
@@ -209,6 +184,70 @@ public class TaskRepository {
                     .addOnFailureListener(err);
 
         } else {
+            db.collection("tasks").document(t.id)
+                    .delete()
+                    .addOnSuccessListener(ok)
+                    .addOnFailureListener(err);
+        }
+    }
+*/
+    /** Brisanje taska uz čišćenje intervala koji nisu 'done' */
+    public void deleteTaskWithRule(@NonNull Task t,
+                                   @NonNull OnSuccessListener<Void> ok,
+                                   @NonNull OnFailureListener err) {
+        if (t.id == null) {
+            err.onFailure(new IllegalArgumentException("No task"));
+            return;
+        }
+
+        String uid = FirebaseAuth.getInstance().getUid();
+        if (uid == null) {
+            err.onFailure(new IllegalStateException("Not signed in"));
+            return;
+        }
+
+        if (!Boolean.TRUE.equals(t.recurring) && "done".equalsIgnoreCase(t.status)) {
+            err.onFailure(new IllegalStateException("Cannot delete finished one-time task"));
+            return;
+        }
+
+        if (Boolean.TRUE.equals(t.recurring)) {
+            AtomicBoolean anyActiveLeft = new AtomicBoolean(false);
+            long now = System.currentTimeMillis();
+
+            if (t.intervals != null) {
+                t.intervals.removeIf(interval -> {
+                    if (!"done".equalsIgnoreCase(interval.status)) {
+                        return true; // ukloni interval
+                    }
+                    if ("active".equalsIgnoreCase(interval.status)) anyActiveLeft.set(true);
+                    return false;
+                });
+            }
+
+            if (!anyActiveLeft.get() && (t.intervals == null || t.intervals.isEmpty())) {
+                // Ako više nema aktivnih intervala, briši ceo task
+                db.collection("tasks").document(t.id)
+                        .delete()
+                        .addOnSuccessListener(ok)
+                        .addOnFailureListener(err);
+            } else {
+                // Samo ažuriraj listu intervala i nextDueAt
+                Long nextDue = t.intervals.stream()
+                        .filter(i -> "active".equalsIgnoreCase(i.status))
+                        .map(i -> i.date)
+                        .min(Long::compareTo)
+                        .orElse(-1L);
+
+                t.nextDueAt = nextDue;
+                db.collection("tasks").document(t.id)
+                        .update("intervals", t.intervals, "nextDueAt", t.nextDueAt, "updatedAt", System.currentTimeMillis())
+                        .addOnSuccessListener(ok)
+                        .addOnFailureListener(err);
+            }
+
+        } else {
+            // Jednokratni ili recurring koji nemaju intervale
             db.collection("tasks").document(t.id)
                     .delete()
                     .addOnSuccessListener(ok)
