@@ -1,5 +1,7 @@
 package com.example.mobil2025.model;
 
+import java.util.List;
+
 public class Task {
     public String id;
     public String ownerUid;
@@ -28,6 +30,8 @@ public class Task {
     public Long createdAt;
     public Long updatedAt;             // dodato, dobro je imati
     public String status;   // "active", "done", "paused", "canceled"
+
+    public List<OccurrenceInterval> intervals;
 
     public Task() {
     }
