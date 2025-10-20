@@ -32,6 +32,10 @@ public class TaskDetailActivity extends AppCompatActivity {
 
     private TextView tvName, tvDesc, tvCategory, tvStatus, tvTiming;
     private Button btnActive, btnDone, btnPaused, btnCanceled, btnEdit, btnDelete;
+    private final OccurrenceRepository occRepo = new OccurrenceRepository();
+    private Occurrence currentOccurrence; // drži trenutnu occurrence ako task ne postoji
+    private boolean isDeletedTask = false;
+    private TextView tvXP;
 
     private String taskId;
     private Task current;
@@ -53,6 +57,7 @@ public class TaskDetailActivity extends AppCompatActivity {
         tvCategory = findViewById(R.id.tvCategory);
         tvStatus = findViewById(R.id.tvStatus);
         tvTiming = findViewById(R.id.tvTiming);
+        tvXP = findViewById(R.id.tvXP);
 
         btnActive = findViewById(R.id.btnActive);
         btnDone = findViewById(R.id.btnDone);
@@ -118,13 +123,52 @@ public class TaskDetailActivity extends AppCompatActivity {
         if (reg != null) reg.remove();
     }
 
+    // U TaskDetailActivity.java dodajte:
+// ...
+
     private void listenTask() {
-        reg = FirebaseFirestore.getInstance()
+        FirebaseFirestore.getInstance()
                 .collection("tasks").document(taskId)
                 .addSnapshotListener((snap, e) -> {
-                    if (e != null || snap == null || !snap.exists()) return;
-                    current = snap.toObject(Task.class);
-                    bind(current);
+                    if (e != null) return;
+
+                    if (snap != null && snap.exists()) {
+                        // Task je pronađen (živ)
+                        current = snap.toObject(Task.class);
+                        isDeletedTask = false; // Resetuj flag
+                        bind(current);
+                    } else {
+                        // Task ne postoji → učitaj occurrence
+                        long occurrenceAt = getIntent().getLongExtra("occurrenceAt", System.currentTimeMillis());
+
+                        // Koristimo getOccurrenceByTaskId jer je to brža pretraga,
+                        // a u CalendarActivity smo se pobrinuli da Task i Occurrence
+                        // za isti dan ne budu prikazani istovremeno.
+                        occRepo.getOccurrenceByTaskId(taskId, occ -> {
+                            if (occ != null) {
+                                currentOccurrence = occ;
+                                Task temp = new Task();
+                                temp.id = occ.taskId; // Da bi bind() mogao prikazati detalje
+                                temp.name = occ.name;
+                                temp.description = occ.description;
+                                temp.categoryId = occ.categoryId;
+                                temp.status = occ.status;
+                                temp.recurring = false;
+
+                                // Ažurirajte globalni objekat 'current' sa podacima iz Occurrence
+                                current = temp;
+                                isDeletedTask = true; // Task je obrisan, ovo je samo prikaz!
+
+                                bind(current);
+                            } else {
+                                Toast.makeText(this, "Task nije pronađen", Toast.LENGTH_LONG).show();
+                                finish();
+                            }
+                        }, err -> {
+                            Toast.makeText(this, "Greška pri učitavanju zadatka: " + err.getMessage(), Toast.LENGTH_LONG).show();
+                            finish();
+                        });
+                    }
                 });
     }
 
@@ -171,6 +215,11 @@ public class TaskDetailActivity extends AppCompatActivity {
         }
         tvTiming.setText(sb.toString());
         updateButtonsVisibility(t);
+        String xpText = "⭐ Težina: " + t.weightXP + " XP\n" +
+                "🔥 Bitnost: " + t.importanceXP + " XP\n" +
+                "💎 Ukupno: " + t.totalXP + " XP";
+        tvXP.setText(xpText);
+        tvXP.setTextColor(Color.parseColor("#4CAF50")); // svetlo zelena
 
     }
 

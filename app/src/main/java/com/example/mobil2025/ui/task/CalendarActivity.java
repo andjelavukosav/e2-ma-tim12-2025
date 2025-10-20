@@ -84,10 +84,17 @@ public class CalendarActivity extends AppCompatActivity {
                     : System.currentTimeMillis();
 
             Intent it = new Intent(this, TaskDetailActivity.class);
+            // Prosledi sve podatke koji su već u listi
             it.putExtra("taskId", t.id);
+            it.putExtra("name", t.name);
+            it.putExtra("description", t.description);
+            it.putExtra("categoryId", t.categoryId);
             it.putExtra("occurrenceAt", occurrenceAt);
+
             startActivity(it);
         });
+
+
         rvDayTasks.setAdapter(briefAdapter);
 
         // Klik na dan: osvježi listu za taj dan
@@ -145,48 +152,54 @@ public class CalendarActivity extends AppCompatActivity {
         long from = now - SIX_MONTHS_MS;
         long to = now + SIX_MONTHS_MS;
 
-        // 1) Aktivni taskovi (crtamo pojave u opsegu)
+        // 1) Dodaj sve taskove
+        Set<String> addedTaskIds = new HashSet<>();
         for (Task t : allTasks) {
-            // (opciono) preskoči otkazane iz kalendara
-            // if ("canceled".equalsIgnoreCase(t.status)) continue;
-
             Set<String> days = dayKeysForTaskInRange(t, from, to);
             int color = colorForCategory(t.categoryId);
 
             for (String k : days) {
                 tasksByDayKey.computeIfAbsent(k, z -> new ArrayList<>()).add(t);
+                addedTaskIds.add(t.id);
                 Calendar cal = keyToCalendar(k, appZone, appLocale);
                 events.add(new EventDay(cal, new ColorDrawable(color)));
             }
         }
 
-        // 2) Završene pojave (occurrences) – samo za prikaz u kalendaru
+        // 2) Dodaj occurrence-e koji nisu već u task listi
         occRepo.loadOccurrencesInRange(from, to, occs -> {
             for (Occurrence oc : occs) {
-                // crtaj i "done" occurrence-e
+                if (addedTaskIds.contains(oc.taskId)) continue;
+
                 String key = dayKey(oc.startAt, appZone, appLocale);
                 int color = Color.parseColor(oc.categoryColorHex != null ? oc.categoryColorHex : "#607D8B");
                 Calendar cal = keyToCalendar(key, appZone, appLocale);
                 events.add(new EventDay(cal, new ColorDrawable(color)));
 
-                // opcionalno dodaj u tasksByDayKey da se pojavi u listi
                 Task t = new Task();
-                t.id = oc.id;
+                t.id = oc.taskId;
                 t.name = oc.name;
                 t.description = oc.description;
                 t.categoryId = oc.categoryId;
+                t.tz = oc.tz;
+                t.status = oc.status;
+
                 tasksByDayKey.computeIfAbsent(key, k -> new ArrayList<>()).add(t);
             }
 
+
             calendarView.setEvents(events);
-            String todayKey = dayKey(System.currentTimeMillis(), appZone, appLocale);
+
+            // Prikaži za trenutno izabrani dan
+            String todayKey = dayKey(lastSelectedDay != null ? lastSelectedDay.getTimeInMillis() : System.currentTimeMillis(), appZone, appLocale);
             briefAdapter.submit(tasksByDayKey.getOrDefault(todayKey, Collections.emptyList()));
         }, err -> {
             calendarView.setEvents(events);
         });
     }
 
-        // -------------------- Helpers --------------------
+
+    // -------------------- Helpers --------------------
 
     @ColorInt
     private int colorForCategory(String categoryId) {

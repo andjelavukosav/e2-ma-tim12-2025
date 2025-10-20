@@ -12,6 +12,7 @@ import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Repo za zavrsene/zakazane pojave (occurrences).
@@ -93,4 +94,68 @@ public class OccurrenceRepository {
                 })
                 .addOnFailureListener(err);
     }
+
+    public void getOccurrenacceByIdOrDate(String taskId, long occurrenceAt,
+                                        Consumer<Occurrence> callback,
+                                        Consumer<Exception> errorCallback) {
+        // Prvo pokušaj direktno po taskId
+        db.collection("occurrences")
+                .whereEqualTo("taskId", taskId)
+                .whereEqualTo("startAt", occurrenceAt)
+                .limit(1)
+                .get()
+                .addOnSuccessListener(query -> {
+                    if (!query.isEmpty()) {
+                        Occurrence occ = query.toObjects(Occurrence.class).get(0);
+                        callback.accept(occ);
+                        return;
+                    }
+                    // Ako nije pronađen, pokušaj pretragu po imenu i datumu (za obrisane taskove)
+                    db.collection("occurrences")
+                            .whereEqualTo("startAt", occurrenceAt)
+                            .limit(5) // maksimum, filtriraj lokalno
+                            .get()
+                            .addOnSuccessListener(q2 -> {
+                                for (Occurrence o : q2.toObjects(Occurrence.class)) {
+                                    if (o.name != null && !o.name.isEmpty()) {
+                                        callback.accept(o);
+                                        return;
+                                    }
+                                }
+                                callback.accept(null);
+                            })
+                            .addOnFailureListener(errorCallback::accept);
+                })
+                .addOnFailureListener(errorCallback::accept);
+    }
+    /**
+     * Učitaj jednu occurrence po taskId.
+     * Ako postoji više, vrati prvu.
+     */
+    public void getOccurrenceByTaskId(@NonNull String taskId,
+                                      @NonNull Consumer<Occurrence> callback,
+                                      @NonNull Consumer<Exception> errorCallback) {
+        String uid = FirebaseAuth.getInstance().getUid();
+        if (uid == null) {
+            errorCallback.accept(new IllegalStateException("Not signed in"));
+            return;
+        }
+
+        db.collection("occurrences")
+                .whereEqualTo("ownerUid", uid) // obavezno zbog rules
+                .whereEqualTo("taskId", taskId)
+                .limit(1) // vraća samo jednu
+                .get()
+                .addOnSuccessListener(query -> {
+                    if (!query.isEmpty()) {
+                        Occurrence occ = query.toObjects(Occurrence.class).get(0);
+                        callback.accept(occ);
+                    } else {
+                        callback.accept(null); // nije pronađeno
+                    }
+                })
+                .addOnFailureListener(errorCallback::accept);
+    }
+
+
 }

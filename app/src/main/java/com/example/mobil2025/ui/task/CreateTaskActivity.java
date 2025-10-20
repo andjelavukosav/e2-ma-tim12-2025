@@ -234,6 +234,9 @@ public class CreateTaskActivity extends AppCompatActivity {
                 case 2: updates.put("importanceXP", 10); break;
                 case 3: updates.put("importanceXP", 100); break;
             }
+            int weightXP = (int) updates.get("weightXP");
+            int importanceXP = (int) updates.get("importanceXP");
+            updates.put("totalXP", weightXP + importanceXP);
 
             long now = System.currentTimeMillis();
 

@@ -24,7 +24,7 @@ public class Task {
 
     // Denormalizovano za recurring
     public Long nextDueAt;             // sledeća pojava (null ili -1L ako je gotovo zauvek)
-
+    public int totalXP; // ukupna vrednost zadatka = weightXP + importanceXP
     public Long createdAt;
     public Long updatedAt;             // dodato, dobro je imati
     public String status;   // "active", "done", "paused", "canceled"

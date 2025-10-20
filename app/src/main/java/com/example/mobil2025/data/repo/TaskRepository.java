@@ -31,6 +31,9 @@ public class TaskRepository {
                            @NonNull OnSuccessListener<Void> ok,
                            @NonNull OnFailureListener err) {
 
+        // Izračunaj vrednost zadatka
+        task.totalXP = (task.weightXP > 0 ? task.weightXP : 0) + (task.importanceXP > 0 ? task.importanceXP : 0);
+
         String uid = FirebaseAuth.getInstance().getUid();
         if (uid == null) { err.onFailure(new IllegalStateException("Not signed in")); return; }
 
