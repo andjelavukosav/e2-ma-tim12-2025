@@ -73,7 +73,11 @@ public class LoginActivity extends AppCompatActivity {
 
     private void handlePostSignIn(FirebaseUser user) {
         user.reload().addOnCompleteListener(t -> {
-            if (!t.isSuccessful()) { setLoading(false); toast("Ne mogu da osvežim status."); return; }
+            if (!t.isSuccessful()) {
+                setLoading(false);
+                toast("Ne mogu da osvežim status.");
+                return;
+            }
 
             FirebaseFirestore db = FirebaseFirestore.getInstance();
             db.collection("users").document(user.getUid()).get()
@@ -82,12 +86,21 @@ public class LoginActivity extends AppCompatActivity {
                         boolean enabled = Boolean.TRUE.equals(doc.getBoolean("enabled"));
                         long now = System.currentTimeMillis();
 
+                        // ✅ 1️⃣ Ako je korisnik već aktiviran u Firestore-u, preskačemo proveru mejla
+                        if (enabled) {
+                            setLoading(false);
+                            goToMain();
+                            return;
+                        }
+
+                        // ✅ 2️⃣ Ako još nije aktiviran, proveravamo da li je verifikovao mejl
                         if (!user.isEmailVerified()) {
                             setLoading(false);
                             toast("Proveri email i klikni na link za aktivaciju (važi 2 min).");
                             return;
                         }
 
+                        // ✅ 3️⃣ Ako link ima vremensko ograničenje
                         if (deadline != null && now > deadline) {
                             toast("Aktivacioni link je istekao. Registruj se ponovo.");
                             deleteAccountAndProfileFully(user, () -> {
@@ -99,19 +112,25 @@ public class LoginActivity extends AppCompatActivity {
                             return;
                         }
 
-                        if (!enabled) {
-                            db.collection("users").document(user.getUid())
-                                    .update("enabled", true)
-                                    .addOnSuccessListener(v -> { setLoading(false); goToMain(); })
-                                    .addOnFailureListener(e -> { setLoading(false); toast("Ne mogu da aktiviram profil."); });
-                        } else {
-                            setLoading(false);
-                            goToMain();
-                        }
+                        // ✅ 4️⃣ Ako je verifikovan ali još nije aktiviran → ažuriraj `enabled` na true
+                        db.collection("users").document(user.getUid())
+                                .update("enabled", true)
+                                .addOnSuccessListener(v -> {
+                                    setLoading(false);
+                                    goToMain();
+                                })
+                                .addOnFailureListener(e -> {
+                                    setLoading(false);
+                                    toast("Ne mogu da aktiviram profil.");
+                                });
                     })
-                    .addOnFailureListener(e -> { setLoading(false); toast("Greška: " + e.getMessage()); });
+                    .addOnFailureListener(e -> {
+                        setLoading(false);
+                        toast("Greška: " + e.getMessage());
+                    });
         });
     }
+
 
     private void deleteAccountAndProfileFully(FirebaseUser user, Runnable onDone) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
