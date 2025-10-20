@@ -1,5 +1,7 @@
 package com.example.mobil2025.model;
 
+import com.example.mobil2025.data.repo.LevelRepository;
+
 import java.util.List;
 
 public class UserProfile {
@@ -80,6 +82,50 @@ public class UserProfile {
         this(uid, email, username, avatarKey, createdAt);
         this.friends = friends;
     }
+
+    public void addXP(int xpGained) {
+        this.xp += xpGained;
+        updateLevel();  // automatski ažurira nivo i PP
+    }
+
+    private void updateLevel() {
+        Level currentLevel = LevelRepository.getLevelForXP(this.xp);
+        this.level = currentLevel.getLevel();
+        this.title = currentLevel.getTitle();
+        this.powerPoints = currentLevel.getPowerPoints();
+    }
+
+    public int getXp() { return xp; }
+    public int getLevel() { return level; }
+    public String getTitle() { return title; }
+    public int getPowerPoints() { return powerPoints; }
+
+    public int addXPAndGetRemainingToNextLevel(int xpGained) {
+        this.xp += xpGained;
+
+        Level currentLevel;
+        Level nextLevel;
+
+        if (this.xp < LevelRepository.getLevels().get(0).getRequiredXP()) {
+            // korisnik još nije dostigao prvi nivo
+            currentLevel = new Level(0, 0, 0, "Nema nivoa");
+            nextLevel = LevelRepository.getLevels().get(0); // prvi nivo kao "sljedeći"
+        } else {
+            currentLevel = LevelRepository.getLevelForXP(this.xp);
+            nextLevel = LevelRepository.getNextLevel(currentLevel);
+        }
+
+        this.level = currentLevel.getLevel();
+        this.title = currentLevel.getTitle();
+        this.powerPoints = currentLevel.getPowerPoints();
+
+        if(nextLevel != null){
+            return nextLevel.getRequiredXP() - this.xp;
+        } else {
+            return 0; // ako je korisnik na max nivou
+        }
+    }
+
 
 }
 
