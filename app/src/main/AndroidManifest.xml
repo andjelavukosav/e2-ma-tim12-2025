@@ -31,6 +31,29 @@
             android:exported="true" />
 
         <activity
+            android:name=".ui.category.CategoryListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.task.CreateTaskActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".ui.task.TaskDetailActivity"
+            android:exported="false"/>
+
+
+        <activity
+            android:name=".ui.task.TaskListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.task.CalendarActivity"
+            android:exported="false" />
+
+
+
+        <activity
             android:name=".ui.profile.ProfileActivity"
             android:exported="true" />
 

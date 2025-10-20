@@ -14,7 +14,7 @@ public class UserProfile {
     public int level;           // trenutni nivo korisnika
     public String title;        // titula (npr. "Početnik", "Iskusni igrač", "Majstor")
     public int powerPoints;     // snaga (PP)
-    public int experiencePoints; // XP - experience points
+    public int xp; // XP - experience points
     public int coins;           // broj sakupljenih novčića
     public List<String> badges; // lista osvojenih bedževa (npr. ["Explorer", "Winner"])
     public List<String> equipment; // lista opreme koju korisnik poseduje (npr. ["Helmet", "Sword"])
@@ -37,7 +37,7 @@ public class UserProfile {
         this.level = 1;
         this.title = "Početnik";
         this.powerPoints = 0;
-        this.experiencePoints = 0;
+        this.xp = 0; // inicijalno
         this.coins = 0;
         this.badges = List.of();
         this.equipment = List.of();
@@ -53,6 +53,7 @@ public class UserProfile {
         this.avatarKey = avatarKey;
         this.createdAt = createdAt;
         this.enabled = enabled;
+        this.xp = 0; // inicijalno
     }
 
     public UserProfile(String uid, String email, String username, String avatarKey, long createdAt, boolean enabled,
@@ -67,7 +68,7 @@ public class UserProfile {
         this.level = level;
         this.title = title;
         this.powerPoints = powerPoints;
-        this.experiencePoints = experiencePoints;
+        this.xp = experiencePoints;
         this.coins = coins;
         this.badges = badges;
         this.equipment = equipment;
