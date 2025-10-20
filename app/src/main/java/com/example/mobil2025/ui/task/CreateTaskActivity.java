@@ -14,6 +14,9 @@ import com.example.mobil2025.data.repo.CategoryRepository;
 import com.example.mobil2025.data.repo.TaskRepository;
 import com.example.mobil2025.model.Category;
 import com.example.mobil2025.model.Task;
+import com.example.mobil2025.model.UserProfile;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.*;
@@ -40,6 +43,8 @@ public class CreateTaskActivity extends AppCompatActivity {
     private final List<Category> categories = new ArrayList<>();
     private ArrayAdapter<CategoryRow> categoryAdapter;
     private ListenerRegistration catReg; // za odjavu u onDestroy
+
+    private UserProfile currentUser;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -68,6 +73,7 @@ public class CreateTaskActivity extends AppCompatActivity {
         btnSave = findViewById(R.id.btnSaveTask);
         npInterval = findViewById(R.id.npInterval);
 
+        loadCurrentUser();
         setupSpinners();
         setupRadioGroup();
         setupDateTimePickers();
@@ -82,6 +88,89 @@ public class CreateTaskActivity extends AppCompatActivity {
         super.onDestroy();
         if (catReg != null) { catReg.remove(); catReg = null; }
     }
+
+    private void loadCurrentUser() {
+        String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        FirebaseFirestore.getInstance().collection("users").document(uid)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        currentUser = doc.toObject(UserProfile.class);
+                        updateWeightSpinnerForLevel();
+                        updateImportanceSpinnerForLevel();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Greška pri učitavanju korisnika", Toast.LENGTH_SHORT).show();
+                });
+    }
+
+    private void updateWeightSpinnerForLevel() {
+        if (currentUser == null) return;
+
+        int level = currentUser.level;
+
+        // Početne vrednosti za težinu
+        double[] baseWeights = {1, 3, 7, 20};
+
+        // Ažuriraj prema nivou korisnika
+        for (int i = 0; i < baseWeights.length; i++) {
+            double value = baseWeights[i];
+            for (int l = 0; l < level; l++) {
+                value = value + Math.round(value / 2.0); // formula XP(n) = XP(n-1) + XP(n-1)/2
+            }
+            baseWeights[i] = Math.round(value);
+        }
+
+        // Kreiraj listu sa novim prikazom
+        List<String> weightLabels = Arrays.asList(
+                "Veoma lak - " + (int) baseWeights[0] + " XP",
+                "Lak - " + (int) baseWeights[1] + " XP",
+                "Težak - " + (int) baseWeights[2] + " XP",
+                "Ekstremno težak - " + (int) baseWeights[3] + " XP"
+        );
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this, android.R.layout.simple_spinner_item, weightLabels
+        );
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerWeight.setAdapter(adapter);
+    }
+
+
+    private void updateImportanceSpinnerForLevel() {
+        if (currentUser == null) return;
+
+        int level = currentUser.level;
+
+        // Početne XP vrednosti za bitnost
+        double[] baseImportances = {1, 3, 10, 100};
+
+        // Ažuriraj svaku prema formuli XP(n) = XP(n−1) + XP(n−1)/2
+        for (int i = 0; i < baseImportances.length; i++) {
+            double value = baseImportances[i];
+            for (int l = 0; l < level; l++) {
+                value = value + Math.round(value / 2.0);
+            }
+            baseImportances[i] = Math.round(value);
+        }
+
+        // Kreiraj nove oznake za spinner
+        List<String> importanceLabels = Arrays.asList(
+                "Normalan - " + (int) baseImportances[0] + " XP",
+                "Važan - " + (int) baseImportances[1] + " XP",
+                "Ekstremno važan - " + (int) baseImportances[2] + " XP",
+                "Specijalan - " + (int) baseImportances[3] + " XP"
+        );
+
+        ArrayAdapter<String> impAdapter = new ArrayAdapter<>(
+                this, android.R.layout.simple_spinner_item, importanceLabels
+        );
+        impAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerImportance.setAdapter(impAdapter);
+    }
+
+
 
     private void setupSpinners() {
         // Jedinica
@@ -222,20 +311,12 @@ public class CreateTaskActivity extends AppCompatActivity {
             updates.put("description", etDesc.getText().toString().trim());
             updates.put("categoryId", selectedCategoryId);
 
-            switch (spinnerWeight.getSelectedItemPosition()) {
-                case 0: updates.put("weightXP", 1); break;
-                case 1: updates.put("weightXP", 3); break;
-                case 2: updates.put("weightXP", 7); break;
-                case 3: updates.put("weightXP", 20); break;
-            }
-            switch (spinnerImportance.getSelectedItemPosition()) {
-                case 0: updates.put("importanceXP", 1); break;
-                case 1: updates.put("importanceXP", 3); break;
-                case 2: updates.put("importanceXP", 10); break;
-                case 3: updates.put("importanceXP", 100); break;
-            }
-            int weightXP = (int) updates.get("weightXP");
-            int importanceXP = (int) updates.get("importanceXP");
+            int weightXP = extractXPFromLabel((String) spinnerWeight.getSelectedItem());
+            updates.put("weightXP", weightXP);
+
+            int importanceXP = extractXPFromLabel((String) spinnerImportance.getSelectedItem());
+            updates.put("importanceXP", importanceXP);
+
             updates.put("totalXP", weightXP + importanceXP);
 
             long now = System.currentTimeMillis();
@@ -326,6 +407,37 @@ public class CreateTaskActivity extends AppCompatActivity {
         });
 
     }
+
+    private int extractXPFromLabel(String label) {
+        if (label == null || label.isEmpty()) return 1;
+
+        try {
+            // Primer labela: "Težak - 11 XP" ili "Visoka bitnost - 30 XP"
+            // → split po "-" i uzimamo desni deo
+            String[] parts = label.split("-");
+            if (parts.length < 2) return 1;
+
+            // Uklanjamo "XP", trimujemo i pretvaramo u int
+            String xpPart = parts[1].replace("XP", "").trim();
+
+            // U slučaju da ima neki razmak ili nevažeći karakter
+            return Integer.parseInt(xpPart);
+        } catch (Exception e) {
+            return 1; // fallback vrednost ako nešto pođe po zlu
+        }
+    }
+
+
+    /*private int extractXPFromLabel(String label) {
+        try {
+            String[] parts = label.split("-");
+            String xpPart = parts[1].trim().replace("XP", "").trim();
+            return Integer.parseInt(xpPart);
+        } catch (Exception e) {
+            return 1;
+        }
+    }
+*/
 
     /** Poveži spinner sa realnim kategorijama iz baze (live listen). */
     private void loadCategories() {

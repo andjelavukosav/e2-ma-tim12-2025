@@ -32,7 +32,7 @@ public class ProfileActivity extends AppCompatActivity {
     private ImageView imageAvatar;
     private TextView textUsername, textLevel, textTitle, textXP, textPP, textCoins,
             textBadges, textEquipment, textQRCode;
-    private Button buttonLogout, buttonChangePassword, btnViewUsers, btnCreateTask, btnOpenCategories, btnShowTasks, btnOpenCalendar;
+    private Button buttonLogout, buttonChangePassword, btnViewUsers, btnCreateTask, btnOpenCategories, btnShowTasks, btnOpenCalendar, btnLevelProgress;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,6 +76,8 @@ public class ProfileActivity extends AppCompatActivity {
         btnCreateTask = findViewById(R.id.btnCreateTask);
         btnShowTasks = findViewById(R.id.btnShowTasks);
         btnOpenCalendar = findViewById(R.id.btnOpenCalendar);
+        btnLevelProgress = findViewById(R.id.buttonLevelProgress);
+
     }
 
     private void loadUserProfile() {
@@ -130,6 +132,11 @@ public class ProfileActivity extends AppCompatActivity {
         btnOpenCalendar.setOnClickListener(v ->
                 startActivity(new Intent(this, CalendarActivity.class)));
 
+
+        btnLevelProgress.setOnClickListener(v -> {
+            Intent intent = new Intent(ProfileActivity.this, LevelProgressActivity.class);
+            startActivity(intent);
+        });
 
 
     }
