@@ -15,6 +15,7 @@ import com.example.mobil2025.data.auth.FirebaseAuthManager;
 import com.example.mobil2025.data.repo.UserRepository;
 import com.example.mobil2025.util.Validators;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class RegisterActivity extends AppCompatActivity {
 
@@ -100,11 +101,28 @@ public class RegisterActivity extends AppCompatActivity {
                     .addOnFailureListener(e -> toast("Nije poslata verifikacija: " + e.getMessage()));
 
             userRepo.createUserProfileWithUniqueUsername(
-                    fu.getUid(), email, username, selectedAvatarKey,
+                    fu.getUid(),
+                    email,
+                    username,
+                    selectedAvatarKey,
                     aVoid -> {
-                        setLoading(false);
-                        toast("Registracija uspešna! Proveri email i aktiviraj nalog.");
-                        finish();
+                        // Postavljanje dodatnih polja za kontrolu aktivacije
+                        FirebaseFirestore db = FirebaseFirestore.getInstance();
+                        db.collection("users").document(fu.getUid())
+                                .update(
+                                        "enabled", false,
+                                        "activationDeadline", System.currentTimeMillis() + 2*60*1000L
+                                )
+                                .addOnSuccessListener(v -> {
+                                    setLoading(false);
+                                    toast("Registracija uspešna! Proveri email i aktiviraj nalog.");
+                                    finish();
+                                })
+                                .addOnFailureListener(e -> {
+                                    setLoading(false);
+                                    toast("Ne mogu da postavim aktivaciju: " + e.getMessage());
+                                    fu.delete();
+                                });
                     },
                     e -> {
                         setLoading(false);
@@ -113,6 +131,7 @@ public class RegisterActivity extends AppCompatActivity {
                         if (cur != null) cur.delete();
                     }
             );
+
         }, e -> {
             setLoading(false);
             toast(e.getMessage());

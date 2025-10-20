@@ -132,7 +132,7 @@ public class LoginActivity extends AppCompatActivity {
                             return;
                         }
 
-                        // ✅ 4️⃣ Ako je verifikovan ali još nije aktiviran → ažuriraj `enabled` na true
+                        //  Ako je verifikovan ali još nije aktiviran → ažuriraj `enabled` na true
                         db.collection("users").document(user.getUid())
                                 .update("enabled", true)
                                 .addOnSuccessListener(v -> {
@@ -192,19 +192,17 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onStart(){
         super.onStart();
-
-        FirebaseAuth auth = FirebaseAuth.getInstance();
-        if(auth.getCurrentUser() != null) {
-            // Vec ulogovan - preskoci login
-            Intent intent = new Intent(this, ProfileActivity.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent); // pokreni MainActivity iz ove LoginActivity
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null) {
+            //  handlePostSignIn da se provjeri verifikaciju i enabled
+            setLoading(true);
+            handlePostSignIn(user);
         }
     }
 
 
     private void goToMain() {
-        Intent i = new Intent(this, MainActivity.class);
+        Intent i = new Intent(this, ProfileActivity.class);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(i);
         finish();

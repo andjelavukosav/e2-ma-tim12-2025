@@ -84,7 +84,7 @@ public class ProfileViewOtherActivity extends  AppCompatActivity{
         textUsername.setText(otherUser.username);
         textTitle.setText("Titula: " + otherUser.title);
         textLevel.setText("Level: " + otherUser.level);
-        textXP.setText("XP: " + otherUser.experiencePoints);
+        textXP.setText("XP: " + otherUser.xp);
         textBadges.setText("Bedževi: " + (otherUser.badges.isEmpty() ? "-" : String.join(", ", otherUser.badges)));
         String equipped = otherUser.equipment.isEmpty() ? "-" : otherUser.equipment.get(0);
         textEquipment.setText("Oprema: " + equipped);
