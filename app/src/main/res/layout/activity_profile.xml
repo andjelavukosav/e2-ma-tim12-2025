@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="24dp"
+    android:background="#f6f7fb">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <ImageView
+            android:id="@+id/imageAvatar"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@mipmap/ic_launcher"
+            android:layout_marginTop="16dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:contentDescription="Avatar korisnika"
+            android:background="@drawable/avatar_border"
+            android:padding="4dp"
+            android:scaleType="centerCrop" />
+
+        <TextView
+            android:id="@+id/textUsername"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Korisničko ime"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toBottomOf="@id/imageAvatar"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="12dp" />
+
+        <TextView
+            android:id="@+id/textTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Titula: Početnik"
+            app:layout_constraintTop_toBottomOf="@id/textUsername"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <TextView
+            android:id="@+id/textLevel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nivo: 1"
+            app:layout_constraintTop_toBottomOf="@id/textTitle"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <TextView
+            android:id="@+id/textXP"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="XP: 0"
+            app:layout_constraintTop_toBottomOf="@id/textLevel"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <TextView
+            android:id="@+id/textPP"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Snaga: 0"
+            app:layout_constraintTop_toBottomOf="@id/textXP"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <TextView
+            android:id="@+id/textCoins"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Novčići: 0"
+            app:layout_constraintTop_toBottomOf="@id/textPP"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <TextView
+            android:id="@+id/textBadges"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bedževi: -"
+            app:layout_constraintTop_toBottomOf="@id/textCoins"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:id="@+id/textEquipment"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Oprema: -"
+            app:layout_constraintTop_toBottomOf="@id/textBadges"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <TextView
+            android:id="@+id/textQRCode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="QR kod: -"
+            app:layout_constraintTop_toBottomOf="@id/textEquipment"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <Button
+            android:id="@+id/buttonChangePassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Promijeni lozinku"
+            android:layout_marginTop="24dp"
+            app:layout_constraintTop_toBottomOf="@id/textQRCode"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <Button
+            android:id="@+id/buttonLogout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Odjavi se"
+            android:layout_marginTop="12dp"
+            app:layout_constraintTop_toBottomOf="@id/buttonChangePassword"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <Button
+            android:id="@+id/buttonViewUsers"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Pregled korisnika"
+            android:layout_marginTop="12dp"
+            app:layout_constraintTop_toBottomOf="@id/buttonLogout"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <Button
+            android:id="@+id/btnCreateTask"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Kreiraj zadatak"
+            android:layout_marginTop="12dp"
+            app:layout_constraintTop_toBottomOf="@id/buttonViewUsers"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <Button
+            android:id="@+id/btnShowTasks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Lista zadataka"
+            android:layout_marginTop="12dp"
+            app:layout_constraintTop_toBottomOf="@id/btnCreateTask"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <Button
+            android:id="@+id/btnOpenCalendar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Kalendar"
+            android:layout_marginTop="12dp"
+            app:layout_constraintTop_toBottomOf="@id/btnShowTasks"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <Button
+            android:id="@+id/btnOpenCategories"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Kategorije"
+            android:layout_marginTop="12dp"
+            app:layout_constraintTop_toBottomOf="@id/btnOpenCalendar"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

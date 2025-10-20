@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.mobil2025.MainActivity;
 import com.example.mobil2025.R;
 import com.example.mobil2025.data.auth.FirebaseAuthManager;
+import com.example.mobil2025.ui.profile.ProfileActivity;
 import com.example.mobil2025.util.AuthErrorUtils;
 import com.example.mobil2025.util.Validators;
 import com.google.firebase.auth.AuthResult;
@@ -55,9 +56,21 @@ public class LoginActivity extends AppCompatActivity {
         String email = etEmail.getText().toString().trim();
         String password = etPassword.getText().toString();
 
-        if (!Validators.isEmailValid(email)) { etEmail.setError("Neispravan email"); return; }
-        if (password.isEmpty()) { etPassword.setError("Unesi lozinku"); return; }
+        if(email.isEmpty()) { etEmail.setError("Unesi email"); return; }
 
+        if(password.isEmpty()) { etPassword.setError("Unesi lozinku"); return; }
+
+        if (!Validators.isLoginInputValid(email, password)) {
+            if (!Validators.isEmailValid(email)) {
+                etEmail.setError("Neispravan format email-a");
+            }
+            if (!Validators.isPasswordValid(password)) {
+                etPassword.setError("Lozinka mora imati najmanje 6 karaktera");
+            }
+            return; // prekini prije Firebase poziva
+        }
+
+        // sad se moze pokusati prijava na Firebase
         setLoading(true);
 
         authManager.signIn(email, password, (AuthResult result) -> {
@@ -66,12 +79,19 @@ public class LoginActivity extends AppCompatActivity {
             handlePostSignIn(user);
         }, e -> {
             setLoading(false);
+            // ne otkrivamo da li nalog postoji - bolje za bezbijednost u slucaju napada - to je privacyMode = true kao drugi parametar
             AuthErrorUtils.UiHint hint = AuthErrorUtils.fromException(e, true);
-            toast(hint.message);
+            switch (hint.target) {
+                case EMAIL:    etEmail.setError(hint.message); break;
+                case PASSWORD: etPassword.setError(hint.message); break;
+                case NONE: break;
+            }
+
+            Toast.makeText(this, hint.message, Toast.LENGTH_LONG).show();
         });
     }
 
-    private void handlePostSignIn(FirebaseUser user) {
+   private void handlePostSignIn(FirebaseUser user) {
         user.reload().addOnCompleteListener(t -> {
             if (!t.isSuccessful()) {
                 setLoading(false);
@@ -86,21 +106,21 @@ public class LoginActivity extends AppCompatActivity {
                         boolean enabled = Boolean.TRUE.equals(doc.getBoolean("enabled"));
                         long now = System.currentTimeMillis();
 
-                        // ✅ 1️⃣ Ako je korisnik već aktiviran u Firestore-u, preskačemo proveru mejla
+                        //  Ako je korisnik već aktiviran u Firestore-u, preskačemo proveru mejla
                         if (enabled) {
                             setLoading(false);
                             goToMain();
                             return;
                         }
 
-                        // ✅ 2️⃣ Ako još nije aktiviran, proveravamo da li je verifikovao mejl
+                        //  Ako još nije aktiviran, proveravamo da li je verifikovao mejl
                         if (!user.isEmailVerified()) {
                             setLoading(false);
                             toast("Proveri email i klikni na link za aktivaciju (važi 2 min).");
                             return;
                         }
 
-                        // ✅ 3️⃣ Ako link ima vremensko ograničenje
+                        //  Ako link ima vremensko ograničenje
                         if (deadline != null && now > deadline) {
                             toast("Aktivacioni link je istekao. Registruj se ponovo.");
                             deleteAccountAndProfileFully(user, () -> {
@@ -112,7 +132,7 @@ public class LoginActivity extends AppCompatActivity {
                             return;
                         }
 
-                        // ✅ 4️⃣ Ako je verifikovan ali još nije aktiviran → ažuriraj `enabled` na true
+                        //  Ako je verifikovan ali još nije aktiviran → ažuriraj `enabled` na true
                         db.collection("users").document(user.getUid())
                                 .update("enabled", true)
                                 .addOnSuccessListener(v -> {
@@ -130,6 +150,7 @@ public class LoginActivity extends AppCompatActivity {
                     });
         });
     }
+
 
 
     private void deleteAccountAndProfileFully(FirebaseUser user, Runnable onDone) {
@@ -168,9 +189,20 @@ public class LoginActivity extends AppCompatActivity {
                 });
     }
 
+    @Override
+    protected void onStart(){
+        super.onStart();
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null) {
+            //  handlePostSignIn da se provjeri verifikaciju i enabled
+            setLoading(true);
+            handlePostSignIn(user);
+        }
+    }
+
 
     private void goToMain() {
-        Intent i = new Intent(this, MainActivity.class);
+        Intent i = new Intent(this, ProfileActivity.class);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(i);
         finish();
