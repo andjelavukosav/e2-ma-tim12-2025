@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mobil2025.R;
 import com.example.mobil2025.data.repo.TaskRepository;
+import com.example.mobil2025.model.OccurrenceInterval;
 import com.example.mobil2025.model.Task;
 import com.example.mobil2025.util.TaskStatusUpdater;
 import com.google.android.material.tabs.TabLayout;
@@ -91,38 +92,42 @@ public class TaskListActivity extends AppCompatActivity {
         long now = System.currentTimeMillis();
 
         for (Task t : all) {
-            // po želji: preskoči otkazane iz liste
             boolean canceled = "canceled".equalsIgnoreCase(t.status);
+            boolean done = "done".equalsIgnoreCase(t.status);
 
-            if (Boolean.TRUE.equals(t.recurring)) {
-                // PONAVLJAJUĆI: prikazuj u listi ako raspored i dalje važi (nema kraja ili kraj ≥ sada)
-                // i ako postoji smislen nextDueAt u budućnosti/sada
-                boolean notEnded = (t.endDate == 0L) || (t.endDate >= now);
-                boolean hasNext = (t.nextDueAt != null && t.nextDueAt > 0);
-                if (!canceled && notEnded && hasNext && t.nextDueAt >= now) {
-                    recurs.add(t);
+            if (t.recurring) {
+                // FILTRIRAJ samo buduće intervale
+                if (t.intervals != null && !canceled) {
+                    List<OccurrenceInterval> futureIntervals = new ArrayList<>();
+                    for (OccurrenceInterval iv : t.intervals) {
+                        if ("active".equalsIgnoreCase(iv.status) && iv.date >= now) {
+                            futureIntervals.add(iv);
+                        }
+                    }
+                    if (!futureIntervals.isEmpty()) {
+                        t.intervals = futureIntervals; // zadrži samo buduće intervale
+                        recurs.add(t);
+                    }
                 }
             } else {
-                // JEDNOKRATNI: prikazuj samo ako je rok sada ili u budućnosti
-                boolean futureOrNow = (t.dueTime >= now);
-                // po želji iz liste izbaci "done" (uradjene) — jer su prošli (ili odmah nestaju kad prodje vreme)
-                boolean notDone = !"done".equalsIgnoreCase(t.status);
-                if (!canceled && futureOrNow && notDone) {
+                // Jednokratni — rok još nije prošao
+                if (!canceled && !done && t.dueTime >= now) {
                     singles.add(t);
                 }
             }
         }
 
-        // Sortiraj po narednom roku (manje -> pre)
+        // Sortiraj po vremenu izvršenja
         singles.sort((a, b) -> Long.compare(a.dueTime, b.dueTime));
         recurs.sort((a, b) -> {
-            long na = (a.nextDueAt != null && a.nextDueAt > 0) ? a.nextDueAt : Long.MAX_VALUE;
-            long nb = (b.nextDueAt != null && b.nextDueAt > 0) ? b.nextDueAt : Long.MAX_VALUE;
+            long na = (a.intervals != null && !a.intervals.isEmpty()) ? a.intervals.get(0).date : Long.MAX_VALUE;
+            long nb = (b.intervals != null && !b.intervals.isEmpty()) ? b.intervals.get(0).date : Long.MAX_VALUE;
             return Long.compare(na, nb);
         });
 
         showCurrentTab();
     }
+
 
     private void showCurrentTab() {
         int pos = tabLayout.getSelectedTabPosition();

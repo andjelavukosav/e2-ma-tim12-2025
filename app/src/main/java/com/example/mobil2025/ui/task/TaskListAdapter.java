@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mobil2025.R;
+import com.example.mobil2025.model.OccurrenceInterval;
 import com.example.mobil2025.model.Task;
 
 import java.text.SimpleDateFormat;
@@ -36,12 +37,14 @@ public class TaskListAdapter extends ListAdapter<Task, RecyclerView.ViewHolder> 
         @Override public boolean areItemsTheSame(@NonNull Task oldItem, @NonNull Task newItem) {
             return Objects.equals(oldItem.id, newItem.id);
         }
-        @Override public boolean areContentsTheSame(@NonNull Task o, @NonNull Task n) {
+        @Override
+        public boolean areContentsTheSame(@NonNull Task o, @NonNull Task n) {
             return o.recurring == n.recurring
                     && Objects.equals(o.name, n.name)
-                    && o.dueTime == n.dueTime
-                    && o.nextDueAt == n.nextDueAt;
+                    && Objects.equals(o.dueTime, n.dueTime)
+                    && Objects.equals(o.nextDueAt, n.nextDueAt);
         }
+
     };
 
     @Override public int getItemViewType(int position) {
@@ -96,32 +99,40 @@ public class TaskListAdapter extends ListAdapter<Task, RecyclerView.ViewHolder> 
             tvName.setText(t.name);
             tvCategory.setText(t.categoryId != null ? t.categoryId : "");
 
+            // Formatiranje pravila ponavljanja
             boolean isWeek = isWeekly(t.recurrenceUnit);
-            String unitSr = isWeek ? "nedelja" : "dan";
             String intervalTxt = (t.recurrenceInterval <= 1)
                     ? (isWeek ? "svake nedelje" : "svakog dana")
                     : String.format(Locale.getDefault(), "svakih %d %s",
                     t.recurrenceInterval, isWeek ? "nedelje" : "dana");
             String opseg = String.format("(%s — %s)",
                     formatDate(t.startDate, t.tz),
-                    t.endDate > 0 ? formatDate(t.endDate, t.tz) : "bez kraja");
+                    t.endDate != null && t.endDate > 0 ? formatDate(t.endDate, t.tz) : "bez kraja");
             tvRule.setText(intervalTxt + " " + opseg);
 
-            Long next = RecurrenceUtils.computeNextDueAt(t, System.currentTimeMillis());
-            if (next != null && next > 0) {
-                tvNext.setText("Sledeće: " + formatDateTime(next, t.tz));
+            long now = System.currentTimeMillis();
 
-                List<Long> ups = RecurrenceUtils.upcomingOccurrencesUntilEnd(t);
-                if (!ups.isEmpty()) {
-                    StringBuilder sb = new StringBuilder("Naredno: ");
-                    for (int i = 0; i < ups.size(); i++) {
-                        if (i > 0) sb.append(", ");
-                        sb.append(formatDateTime(ups.get(i), t.tz));
+            // Filtriraj samo buduće intervale
+            List<OccurrenceInterval> futureIntervals = new java.util.ArrayList<>();
+            if (t.intervals != null) {
+                for (OccurrenceInterval oi : t.intervals) {
+                    if (oi.date != null && oi.date >= now && !"canceled".equalsIgnoreCase(oi.status)) {
+                        futureIntervals.add(oi);
                     }
-                    tvUpcoming.setText(sb.toString());
-                } else {
-                    tvUpcoming.setText("");
                 }
+            }
+
+            if (!futureIntervals.isEmpty()) {
+                // Prvi interval u budućnosti
+                tvNext.setText("Sledeće: " + formatDateTime(futureIntervals.get(0).date, t.tz));
+
+                // Svi budući intervali
+                StringBuilder sb = new StringBuilder("Naredno: ");
+                for (int i = 0; i < futureIntervals.size(); i++) {
+                    if (i > 0) sb.append(", ");
+                    sb.append(formatDateTime(futureIntervals.get(i).date, t.tz));
+                }
+                tvUpcoming.setText(sb.toString());
             } else {
                 tvNext.setText("Nema više pojava");
                 tvUpcoming.setText("");
@@ -129,6 +140,7 @@ public class TaskListAdapter extends ListAdapter<Task, RecyclerView.ViewHolder> 
 
             itemView.setOnClickListener(v -> click.onTaskClick(t));
         }
+
 
         private boolean isWeekly(String unitRaw) {
             if (unitRaw == null) return false;
