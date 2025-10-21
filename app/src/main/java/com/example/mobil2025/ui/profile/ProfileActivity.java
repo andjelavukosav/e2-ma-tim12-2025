@@ -10,9 +10,15 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.mobil2025.R;
+import com.example.mobil2025.data.repo.EquipmentRepository;
+import com.example.mobil2025.model.ClothingItem;
+import com.example.mobil2025.model.PotionItem;
 import com.example.mobil2025.model.UserProfile;
 import com.example.mobil2025.ui.auth.LoginActivity;
 import com.example.mobil2025.ui.category.CategoryListActivity;
+import com.example.mobil2025.ui.inventory.ActiveEquipmentActivity;
+import com.example.mobil2025.ui.inventory.InventoryActivity;
+import com.example.mobil2025.ui.store.StoreActivity;
 import com.example.mobil2025.ui.task.CalendarActivity;
 import com.example.mobil2025.ui.task.CreateTaskActivity;
 import com.example.mobil2025.ui.task.TaskListActivity;
@@ -25,6 +31,10 @@ import com.google.firebase.firestore.FirebaseFirestore;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
 public class ProfileActivity extends AppCompatActivity {
 
     private FirebaseAuth auth;
@@ -32,7 +42,12 @@ public class ProfileActivity extends AppCompatActivity {
     private ImageView imageAvatar;
     private TextView textUsername, textLevel, textTitle, textXP, textPP, textCoins,
             textBadges, textEquipment, textQRCode;
-    private Button buttonLogout, buttonChangePassword, btnViewUsers, btnCreateTask, btnOpenCategories, btnShowTasks, btnOpenCalendar, btnLevelProgress;
+    private Button buttonLogout, buttonChangePassword,
+            btnViewUsers, btnCreateTask, btnOpenCategories,
+            btnShowTasks, btnOpenCalendar, btnLevelProgress,
+            btnOpenStore, btnViewEquipment, btnViewActiveEquipment;
+
+    private UserProfile userProfile;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +56,8 @@ public class ProfileActivity extends AppCompatActivity {
 
         // 1️ Inicijalizacija Firebase servisa
         initFirebase();
+
+        //EquipmentRepository.addStoreItemsIfNotExists();
 
         // 2 Inicijalizacija UI elemenata
         initViews();
@@ -77,7 +94,9 @@ public class ProfileActivity extends AppCompatActivity {
         btnShowTasks = findViewById(R.id.btnShowTasks);
         btnOpenCalendar = findViewById(R.id.btnOpenCalendar);
         btnLevelProgress = findViewById(R.id.buttonLevelProgress);
-
+        btnOpenStore = findViewById(R.id.buttonOpenStore);
+        btnViewEquipment = findViewById(R.id.buttonViewEquipment);
+        btnViewActiveEquipment = findViewById(R.id.buttonViewActiveEquipment);
     }
 
     private void loadUserProfile() {
@@ -92,8 +111,8 @@ public class ProfileActivity extends AppCompatActivity {
         db.collection("users").document(user.getUid()).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
-                        UserProfile profile = documentSnapshot.toObject(UserProfile.class);
-                        if (profile != null) displayProfile(profile);
+                        userProfile = documentSnapshot.toObject(UserProfile.class);
+                        if (userProfile != null) displayProfile(userProfile);
                     } else {
                         Toast.makeText(this, "Profil nije pronađen.", Toast.LENGTH_SHORT).show();
                     }
@@ -138,6 +157,33 @@ public class ProfileActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
+        btnOpenStore.setOnClickListener(v -> {
+            Intent intent = new Intent(ProfileActivity.this, StoreActivity.class);
+            startActivity(intent);
+        });
+
+        btnViewEquipment.setOnClickListener(v -> {
+            Intent intent = new Intent(this, InventoryActivity.class);
+            startActivity(intent);
+        });
+
+        btnViewActiveEquipment.setOnClickListener(v -> {
+            List<ClothingItem> activeClothing = userProfile.getClothingInventory().stream()
+                    .filter(ClothingItem::isActivated) // samo aktivirane stavke
+                    .collect(Collectors.toList());
+
+            List<PotionItem> activePotions = userProfile.getPotionInventory().stream()
+                    .filter(PotionItem::isActivated) // trajni napici
+                    .collect(Collectors.toList());
+
+            // Prikaz u novoj aktivnosti ili dialogu
+            Intent intent = new Intent(this, ActiveEquipmentActivity.class);
+            intent.putExtra("activeClothing", new ArrayList<>(activeClothing));
+            intent.putExtra("activePotions", new ArrayList<>(activePotions));
+            intent.putExtra("userProfile", userProfile);
+            startActivity(intent);
+        });
+
 
     }
 
@@ -147,7 +193,7 @@ public class ProfileActivity extends AppCompatActivity {
         textTitle.setText("Titula: " + profile.title);
         textXP.setText("XP: " + profile.xp);
         textPP.setText("Snaga (PP): " + profile.powerPoints);
-        textCoins.setText("Novčići: " + profile.coins);
+        textCoins.setText("Novčići: " + profile.getCoins());
         textBadges.setText("Bedževi: " + String.join(", ", profile.badges));
         textEquipment.setText("Oprema: " + String.join(", ", profile.equipment));
         textQRCode.setText("QR kod: " + profile.qrCodeUrl);

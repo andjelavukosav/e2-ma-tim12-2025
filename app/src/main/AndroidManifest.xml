@@ -73,6 +73,18 @@
             android:name=".ui.profile.LevelProgressActivity"
             android:exported="true" />
 
+        <activity
+            android:name=".ui.store.StoreActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".ui.inventory.InventoryActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".ui.inventory.ActiveEquipmentActivity"
+            android:exported="true" />
+
 
     </application>
 
