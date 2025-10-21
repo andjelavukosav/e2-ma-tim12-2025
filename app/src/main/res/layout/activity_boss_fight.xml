@@ -31,7 +31,7 @@
                     android:id="@+id/tv_boss_level"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="BOSS NIVO 1"
+                    android:text="BOSS"
                     android:textSize="28sp"
                     android:textStyle="bold"
                     android:textColor="#e94560"
@@ -180,6 +180,28 @@
                             android:textStyle="bold"
                             android:layout_marginTop="4dp"/>
                     </LinearLayout>
+                    <!-- Kovčeg za nagrade -->
+                    <ImageView
+                        android:id="@+id/img_treasure_chest"
+                        android:layout_width="120dp"
+                        android:layout_height="120dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="Treasure Chest"
+                        android:layout_marginTop="16dp"
+                        android:visibility="gone" />
+
+                    <!-- Tekst za prikaz dobijenih nagrada -->
+                    <TextView
+                        android:id="@+id/tv_obtained_rewards"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textSize="16sp"
+                        android:textColor="#ffd700"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:layout_marginTop="8dp"
+                        android:visibility="gone"/>
 
                     <!-- Equipment Nagrada -->
                     <LinearLayout
@@ -436,28 +458,6 @@
             android:visibility="gone"
             android:layout_marginBottom="16dp"/>
 
-        <!-- Kovčeg za nagrade -->
-        <ImageView
-            android:id="@+id/img_treasure_chest"
-            android:layout_width="120dp"
-            android:layout_height="120dp"
-            android:layout_gravity="center"
-            android:contentDescription="Treasure Chest"
-            android:layout_marginTop="16dp"
-            android:visibility="gone" />
-
-        <!-- Tekst za prikaz dobijenih nagrada -->
-        <TextView
-            android:id="@+id/tv_obtained_rewards"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textSize="16sp"
-            android:textColor="#ffd700"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:layout_marginTop="8dp"
-            android:visibility="gone"/>
 
     </LinearLayout>
 </ScrollView>

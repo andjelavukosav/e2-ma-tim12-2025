@@ -428,17 +428,6 @@ public class CreateTaskActivity extends AppCompatActivity {
     }
 
 
-    /*private int extractXPFromLabel(String label) {
-        try {
-            String[] parts = label.split("-");
-            String xpPart = parts[1].trim().replace("XP", "").trim();
-            return Integer.parseInt(xpPart);
-        } catch (Exception e) {
-            return 1;
-        }
-    }
-*/
-
     /** Poveži spinner sa realnim kategorijama iz baze (live listen). */
     private void loadCategories() {
         // prikaži “Učitavam…” dok ne stignu podaci

@@ -148,7 +148,7 @@ public class CategoryRepository {
                     db.collection("tasks")
                             .whereEqualTo("ownerUid", ownerUid)
                             .whereEqualTo("categoryId", categoryId)
-                            .whereEqualTo("active", true)
+                            .whereEqualTo("status", "active")  // ← ovde je ispravno
                             .limit(1)
                             .get()
                             .addOnSuccessListener(qs -> {
@@ -159,8 +159,8 @@ public class CategoryRepository {
                                     return;
                                 }
 
-                                // 3) Nema aktivnih taskova -> briši kategoriju + rezervaciju boje u batch-u
-                                String key = ownerUid + "_" + c.colorHex.toUpperCase(java.util.Locale.ROOT);
+                                // Nema aktivnih taskova → briši kategoriju
+                                String key = ownerUid + "_" + c.colorHex.toUpperCase(Locale.ROOT);
                                 DocumentReference colorRef = db.collection("category_colors").document(key);
 
                                 com.google.firebase.firestore.WriteBatch batch = db.batch();
@@ -172,6 +172,7 @@ public class CategoryRepository {
                                         .addOnFailureListener(err);
                             })
                             .addOnFailureListener(err);
+
                 })
                 .addOnFailureListener(err);
     }

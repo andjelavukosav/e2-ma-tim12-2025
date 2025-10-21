@@ -358,39 +358,42 @@ public class BossFightActivity extends AppCompatActivity {
     }
 
     private void handleFiveAttackPayoutIfNeeded() {
-        if (attacksOnCurrentBoss % 5 != 0) return; // radi samo na svakom 5. pokušaju
+        if (attacksOnCurrentBoss % 5 != 0) return; // samo na svakih 5 napada
+        if (bossHp <= 0) return; // boss već poražen
 
-        // Bazna nagrada po nivou
         long reward = calcBaseRewardForLevel(bossLevel);
         double dropChance = BASE_DROP_CHANCE;
 
-        if (bossHp == 0) {
-            // Puna nagrada + puna šansa
-            grantCoins(reward);
-            tryDropEquipment(dropChance);
-            Toast.makeText(this, "🎉 Pobedila si Bossa nakon 5 napada!", Toast.LENGTH_LONG).show();
-            // Po želji: attacksOnCurrentBoss = 0; // ako startuješ novog bossa odmah
-            return;
-        }
-
-        // Boss nije poražen
         if (bossHp <= bossMaxHp / 2) {
-            // Prepolovljeno jer je posle 5 napada skinuto ≥ 50% HP
             long halved = Math.max(1, reward / 2);
-            grantCoins(halved);
-            tryDropEquipment(dropChance / 2.0); // 10%
+            grantCoinsAndShowUI(halved, dropRandomEquipment());
             Toast.makeText(this, "⚔️ Posle 5 napada: boss još živi, ali je ispod 50% HP. Nagrada i šansa prepolovljene.", Toast.LENGTH_LONG).show();
+        } else if (bossHp == 0) {
+            grantCoinsAndShowUI(reward, dropRandomEquipment());
+            Toast.makeText(this, "🎉 Pobedila si Bossa nakon 5 napada!", Toast.LENGTH_LONG).show();
         } else {
-            // Nema nagrade jer posle 5 napada nije ni poražen ni na ≤50% HP
             Toast.makeText(this, "⏳ Posle 5 napada nema nagrade (boss je iznad 50% HP).", Toast.LENGTH_SHORT).show();
         }
+
+        attacksOnCurrentBoss = 0; // reset za sledećeg bossa
     }
+
 
     private void onSuccessfulHit() {
         bossHp -= userPP;
         if (bossHp < 0) bossHp = 0;
         Toast.makeText(this, "Uspešan napad! Boss je izgubio " + userPP + " HP!", Toast.LENGTH_SHORT).show();
         updateBossInFirestore();
+
+        if (bossHp == 0) {
+            giveBossRewards(); // dodela novčića i opreme odmah
+        }
+    }
+
+    private void giveBossRewards() {
+        long reward = calcBaseRewardForLevel(bossLevel);
+        grantCoinsAndShowUI(reward, null); // kasnije možeš dodati callback za opremu
+        tryDropEquipment(BASE_DROP_CHANCE);
     }
 
     private void onMiss() {
@@ -453,5 +456,85 @@ public class BossFightActivity extends AppCompatActivity {
         tvRemainingAttacks.setText(remainingAttacks + " / 5");
     }
 
-    
+    private void showRewardsAnimation(long coins, String equipmentName) {
+        // Prikaži kovčeg i tekst
+        imgTreasureChest.setVisibility(View.VISIBLE);
+        tvObtainedRewards.setVisibility(View.VISIBLE);
+
+        // Postavi tekst nagrade
+        String rewardsText = "💰 +" + coins + " novčića";
+        if (equipmentName != null && !equipmentName.isEmpty()) {
+            rewardsText += "\n🎁 Dobila si: " + equipmentName;
+        }
+        tvObtainedRewards.setText(rewardsText);
+
+        // Animacija kovčega (npr. “shake i open”)
+        imgTreasureChest.setImageResource(R.drawable.ic_treasure_closed);
+
+        imgTreasureChest.animate()
+                .rotationBy(20f)  // mali shake
+                .setDuration(100)
+                .withEndAction(() -> imgTreasureChest.animate()
+                        .rotationBy(-40f)
+                        .setDuration(100)
+                        .withEndAction(() -> imgTreasureChest.animate()
+                                .rotationBy(20f)
+                                .setDuration(100)
+                                .withEndAction(() -> imgTreasureChest.setImageResource(R.drawable.ic_treasure_open))
+                                .start())
+                        .start())
+                .start();
+    }
+
+    private void grantCoinsAndShowUI(long amount, String equipmentName) {
+        if (amount <= 0) return;
+
+        db.collection("users").document(ownerUid)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    long currentCoins = (doc.exists() && doc.getLong("coins") != null) ? doc.getLong("coins") : 0L;
+                    long newCoins = currentCoins + amount;
+
+                    db.collection("users").document(ownerUid)
+                            .update("coins", newCoins)
+                            .addOnSuccessListener(aVoid -> {
+                                // 🔹 Tek ovde prikazujemo animaciju
+                                showRewardsAnimation(amount, equipmentName);
+                            })
+                            .addOnFailureListener(e -> Log.e("BOSS_DEBUG", "Greška pri update-u novčića: " + e.getMessage()));
+                });
+    }
+
+
+    private String dropRandomEquipment() {
+        Random dropChance = new Random();
+        int typeRoll = dropChance.nextInt(100);
+        EquipmentType dropType = (typeRoll < 95) ? EquipmentType.CLOTHING : EquipmentType.WEAPON;
+
+        var queryResult = db.collection("equipments")
+                .whereEqualTo("type", dropType.toString())
+                .get()
+                .addOnSuccessListener(query -> {
+                    if (!query.isEmpty()) {
+                        int randomIndex = new Random().nextInt(query.size());
+                        var doc = query.getDocuments().get(randomIndex);
+                        String name = doc.getString("name");
+
+                        Map<String, Object> newItem = new HashMap<>();
+                        newItem.put("equipmentId", doc.getId());
+                        newItem.put("name", name);
+                        newItem.put("type", dropType.toString());
+                        newItem.put("obtainedAt", System.currentTimeMillis());
+
+                        db.collection("users").document(ownerUid)
+                                .collection("inventory")
+                                .add(newItem);
+                    }
+                });
+        // Za jednostavnu implementaciju možeš odmah vratiti ime (pretpostavi da postoji oprema)
+        return queryResult.getResult() != null && !queryResult.getResult().isEmpty() ?
+                queryResult.getResult().getDocuments().get(0).getString("name") : null;
+    }
+
+
 }
