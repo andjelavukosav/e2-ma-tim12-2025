@@ -4,9 +4,11 @@ import android.util.Log;
 
 import com.example.mobil2025.data.repo.LevelRepository;
 
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
-public class UserProfile {
+public class UserProfile implements Serializable {
     public String uid;
     public String email;
     public String username;   // IMMUTABLE
@@ -30,12 +32,16 @@ public class UserProfile {
     public String title;        // titula (npr. "Početnik", "Iskusni igrač", "Majstor")
     public int powerPoints;     // snaga (PP)
     public int xp; // XP - experience points
-    public int coins;           // broj sakupljenih novčića
+    private int coins;           // broj sakupljenih novčića
     public List<String> badges; // lista osvojenih bedževa (npr. ["Explorer", "Winner"])
     public List<String> equipment; // lista opreme koju korisnik poseduje (npr. ["Helmet", "Sword"])
     public String qrCodeUrl;    // link na QR kod korisnika
 
+    public List<String> ownedEquipment;
     public List<String> friends;
+
+    private List<ClothingItem> clothingInventory = new ArrayList<>();
+    private List<PotionItem> potionInventory = new ArrayList<>();
     // Prazan konstruktor potreban Firestore-u
     public UserProfile() {}
 
@@ -169,6 +175,29 @@ public class UserProfile {
         }
     }
 
+    public List<ClothingItem> getClothingInventory() { return clothingInventory; }
+    public List<PotionItem> getPotionInventory() { return potionInventory; }
+
+    // Dodavanje stavki u inventar
+    public void addClothing(Clothing clothing) {
+        clothingInventory.add(new ClothingItem(clothing.getUid(), clothing.getDurability()));
+    }
+
+
+    public void addPotion(Potion potion) {
+        potionInventory.add(new PotionItem(potion.getUid()));
+    }
+
+    public int getCoins(){ return this.coins; }
+
+
+    public void setCoins(int coins) {
+        this.coins = coins;
+    }
+
+    public void removeBrokenClothing() {
+        clothingInventory.removeIf(ClothingItem::isBroken);
+    }
 
 
 }
