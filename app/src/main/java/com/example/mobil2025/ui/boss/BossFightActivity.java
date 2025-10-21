@@ -1,6 +1,10 @@
 package com.example.mobil2025.ui.boss;
 
 import android.content.Intent;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -25,7 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
-public class BossFightActivity extends AppCompatActivity {
+public class BossFightActivity extends AppCompatActivity implements SensorEventListener {
     private FirebaseFirestore db;
     private String ownerUid;
     private int bossLevel;
@@ -37,10 +41,16 @@ public class BossFightActivity extends AppCompatActivity {
     private TextView tvBossHp, tvBossHpPercent, tvPlayerPP, tvHitChance, tvRemainingAttacks;
     private ProgressBar progressBossHp;
     private Button btnAttack;
+    private boolean chestOpened = false;
 
     private ImageView imgTreasureChest;
     private TextView tvObtainedRewards;
     private int totalAttacks = 0;               // ukupno izvedeni napadi
+
+    private SensorManager sensorManager;
+    private Sensor accelerometer;
+    private float shakeThreshold = 12.0f;
+    private long lastShakeTime = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,8 +92,70 @@ public class BossFightActivity extends AppCompatActivity {
         loadBossData();
 
         btnAttack.setOnClickListener(v -> performAttack());
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        if(sensorManager != null){
+            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        }
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (accelerometer != null) {
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_UI);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        sensorManager.unregisterListener(this);
+    }
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            float x = event.values[0];
+            float y = event.values[1];
+            float z = event.values[2];
+
+            double acceleration = Math.sqrt(x*x + y*y + z*z) - SensorManager.GRAVITY_EARTH;
+            if(acceleration > shakeThreshold){
+                long currentTime = System.currentTimeMillis();
+                if(currentTime - lastShakeTime > 500){ // debounce
+                    lastShakeTime = currentTime;
+                    onChestShake();
+                }
+            }
+        }
+    }
+
+
+    private void onChestShake() {
+        if (bossHp > 0) return; // kovčeg aktiviramo samo kada je boss poražen
+
+        if (!chestOpened) {
+            // Prvi shake -> otvori kovčeg
+            imgTreasureChest.setImageResource(R.drawable.ic_treasure_open);
+            chestOpened = true;
+        } else {
+            // Drugi shake -> mali shake animacija
+            imgTreasureChest.animate()
+                    .rotationBy(20f)
+                    .setDuration(100)
+                    .withEndAction(() -> imgTreasureChest.animate()
+                            .rotationBy(-40f)
+                            .setDuration(100)
+                            .withEndAction(() -> imgTreasureChest.animate()
+                                    .rotationBy(20f)
+                                    .setDuration(100)
+                                    .start())
+                            .start())
+                    .start();
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {}
     private void loadUserData() {
         db.collection("users").document(ownerUid)
                 .get()
@@ -392,6 +464,7 @@ public class BossFightActivity extends AppCompatActivity {
 
     private void giveBossRewards() {
         long reward = calcBaseRewardForLevel(bossLevel);
+        showRewardsAnimation(reward, null);
         grantCoinsAndShowUI(reward, null); // kasnije možeš dodati callback za opremu
         tryDropEquipment(BASE_DROP_CHANCE);
     }
@@ -535,6 +608,5 @@ public class BossFightActivity extends AppCompatActivity {
         return queryResult.getResult() != null && !queryResult.getResult().isEmpty() ?
                 queryResult.getResult().getDocuments().get(0).getString("name") : null;
     }
-
-
+    
 }
