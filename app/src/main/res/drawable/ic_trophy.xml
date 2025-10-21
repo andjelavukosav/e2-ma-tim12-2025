@@ -1,0 +1,22 @@
+<!-- res/drawable/ic_trophy.xml - Victory trophy -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <path
+        android:fillColor="#ffd700"
+        android:pathData="M50,10h20v10h-20z"/>
+    <path
+        android:fillColor="#ffd700"
+        android:pathData="M30,20h60v40c0,16.57 -13.43,30 -30,30S30,76.57 30,60V20z"/>
+    <path
+        android:fillColor="#ffd700"
+        android:pathData="M45,90h30v20h-30z"/>
+    <path
+        android:fillColor="#ffd700"
+        android:pathData="M35,110h50v5h-50z"/>
+    <path
+        android:fillColor="#ff6b6b"
+        android:pathData="M55,35h10v15h-10z"/>
+</vector>

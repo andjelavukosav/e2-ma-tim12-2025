@@ -1,7 +1,10 @@
 package com.example.mobil2025.ui.profile;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import android.content.Intent;
 import android.os.Bundle;
+import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -10,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.mobil2025.R;
 import com.example.mobil2025.data.repo.LevelRepository;
 import com.example.mobil2025.model.UserProfile;
+import com.example.mobil2025.ui.boss.BossFightActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -23,7 +27,11 @@ public class LevelProgressActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_level_progress);
-
+        Button btnGoToBoss = findViewById(R.id.btnGoToBoss);
+        btnGoToBoss.setOnClickListener(v -> {
+            Intent intent = new Intent(LevelProgressActivity.this, BossFightActivity.class);
+            startActivity(intent);
+        });
         textLevelTitle = findViewById(R.id.textLevelTitle);
         textLevel = findViewById(R.id.textLevel);
         textPP = findViewById(R.id.textPP);

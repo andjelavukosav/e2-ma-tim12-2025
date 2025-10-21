@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.mobil2025.R;
 import com.example.mobil2025.model.UserProfile;
 import com.example.mobil2025.ui.auth.LoginActivity;
+import com.example.mobil2025.ui.boss.BossFightActivity;
 import com.example.mobil2025.ui.category.CategoryListActivity;
 import com.example.mobil2025.ui.task.CalendarActivity;
 import com.example.mobil2025.ui.task.CreateTaskActivity;
@@ -50,6 +51,7 @@ public class ProfileActivity extends AppCompatActivity {
 
         // 4️ Postavljanje akcija na dugmad
         setupListeners();
+
     }
 
     private void initFirebase() {
