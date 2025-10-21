@@ -1,5 +1,7 @@
 package com.example.mobil2025.data.repo;
 
+import android.util.Log;
+
 import com.example.mobil2025.model.UserProfile;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -59,16 +61,88 @@ public class UserRepository {
         }).addOnSuccessListener(ok).addOnFailureListener(err);
     }
 
-    public void addXP(String uid, long xpToAdd, OnCompleteListener listener) {
+    public void addXP(String uid, long xpToAdd, OnLevelUpListener listener) {
         DocumentReference ref = db.collection("users").document(uid);
-        ref.update("xp", FieldValue.increment(xpToAdd))
-                .addOnSuccessListener(v -> listener.onSuccess())
-                .addOnFailureListener(e -> listener.onFailure(e));
+
+        db.runTransaction(transaction -> {
+            DocumentSnapshot snap = transaction.get(ref);
+            if (!snap.exists()) {
+                throw new FirebaseFirestoreException("Korisnik ne postoji",
+                        FirebaseFirestoreException.Code.NOT_FOUND);
+            }
+
+            UserProfile user = snap.toObject(UserProfile.class);
+            if (user == null) throw new FirebaseFirestoreException("Greška pri čitanju profila",
+                    FirebaseFirestoreException.Code.ABORTED);
+
+            int previousLevel = user.getLevel();
+            int previousXP = user.getXp();
+            int previousPP = user.getPowerPoints();
+
+            // 🔹 Ispiši trenutne vrednosti pre update-a
+            Log.d("AddXP", "Pre update-a: XP=" + previousXP + ", Level=" + previousLevel + ", PP=" + previousPP);
+
+            // 🔹 Dodaj XP i automatski update nivo i PP
+            user.addXP((int) xpToAdd);
+
+            int newLevel = user.getLevel();
+            int newXP = user.getXp();
+            int newPP = user.getPowerPoints();
+
+            // 🔹 Ispiši vrednosti posle dodavanja XP-a, pre update-a u bazi
+            Log.d("AddXP", "Posle dodavanja XP: XP=" + newXP + ", Level=" + newLevel + ", PP=" + newPP);
+
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("xp", newXP);
+            updates.put("level", newLevel);
+            updates.put("title", user.getTitle());
+            updates.put("powerPoints", newPP);
+
+            boolean leveledUp = false;
+
+            if (newLevel > previousLevel) {
+                user.lastLevelUpAt = System.currentTimeMillis();
+                updates.put("lastLevelUpAt", user.lastLevelUpAt);
+                leveledUp = true;
+                Log.d("AddXP", "Korisnik je prešao nivo! Novi nivo: " + newLevel);
+            }
+
+            transaction.update(ref, updates);
+
+            return leveledUp;
+        }).addOnSuccessListener(leveledUp -> {
+            listener.onSuccess((Boolean) leveledUp);
+        }).addOnFailureListener(listener::onFailure);
     }
 
-    // Definiši interfejs za callback
-    public interface OnCompleteListener {
-        void onSuccess();
+    // 🔹 Interfejs za callback
+    public interface OnLevelUpListener {
+        void onSuccess(boolean leveledUp);
         void onFailure(Exception e);
     }
+
+    public void updateSuccessRate(String uid, double newRate,
+                                  OnSuccessListener<Void> ok, OnFailureListener err) {
+        db.collection("users").document(uid)
+                .update("successRate", newRate)
+                .addOnSuccessListener(ok)
+                .addOnFailureListener(err);
+    }
+
+    public void getUserLevel(String userId, OnSuccessListener<Integer> success, OnFailureListener failure) {
+        FirebaseFirestore.getInstance().collection("users")
+                .document(userId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        Long levelLong = documentSnapshot.getLong("level");
+                        int level = (levelLong != null) ? levelLong.intValue() : 1; // default 1
+                        success.onSuccess(level);
+                    } else {
+                        success.onSuccess(1); // default level
+                    }
+                })
+                .addOnFailureListener(failure);
+    }
+
 }

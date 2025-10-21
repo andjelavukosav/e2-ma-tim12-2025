@@ -1,352 +1,202 @@
 package com.example.mobil2025.ui.boss;
 
-import android.animation.ObjectAnimator;
 import android.os.Bundle;
-import android.view.LayoutInflater;
+import android.util.Log;
 import android.view.View;
-import android.view.animation.DecelerateInterpolator;
 import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.cardview.widget.CardView;
-import androidx.core.content.ContextCompat;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import com.example.mobil2025.model.Boss;
-import com.example.mobil2025.model.StageStats;
-import com.example.mobil2025.util.BossManager;
-import com.example.mobil2025.R;
 
-import java.util.ArrayList;
-import java.util.List;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.example.mobil2025.R;
+import com.example.mobil2025.model.Boss;
+import com.example.mobil2025.model.UserProfile;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.util.Random;
 
 public class BossFightActivity extends AppCompatActivity {
+    private FirebaseFirestore db;
+    private String ownerUid;
+    private int bossLevel;
+    private int bossHp, bossMaxHp;
+    private int userPP;
+    private double userSuccessRate;
+    private int remainingAttacks = 5;
 
-    private BossManager bossManager;
-    // private EquipmentAdapter equipmentAdapter; // Oprema isključena
-  //  private BossFightSession currentSession;
-
-    // UI Components
-    private TextView tvBossLevel;
-    private TextView tvBossHp;
-    private TextView tvBossHpPercentage;
-    private ImageView imgBoss;
+    private TextView tvBossHp, tvBossHpPercent, tvPlayerPP, tvHitChance, tvRemainingAttacks;
     private ProgressBar progressBossHp;
-
-    private TextView tvRewardXp;
-    private TextView tvRewardCoins;
-    private TextView tvRewardEquipment;
-
-    private TextView tvPlayerPP;
-    private TextView tvHitChance;
-    private TextView tvRemainingAttacks;
-
-    // private RecyclerView rvEquipment; // Oprema isključena
-    // private TextView tvNoEquipment; // Oprema isključena
-
-    private CardView cardAttackHistory;
-    private LinearLayout layoutAttackHistory;
-
     private Button btnAttack;
-    private Button btnEndSession;
-
-    // Data
-    private int playerBasePP;
-    private int playerTotalPP;
-    // private List<Equipment> equippedItems; // Oprema isključena
-    //private BossRewards  currentRewards;
-    private StageStats stageStats;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_boss_fight);
 
-        initializeViews();
-        initializeData();
-        // setupRecyclerView(); // Oprema isključena
-        setupListeners();
-        startNewSession();
-        updateUI();
-    }
+        db = FirebaseFirestore.getInstance();
 
-    private void initializeViews() {
-        // Boss UI
-        tvBossLevel = findViewById(R.id.tv_boss_level);
+        // Preuzimanje UID-a i nivoa iz Intenta
+        ownerUid = getIntent().getStringExtra("uid");
+        bossLevel = getIntent().getIntExtra("level", 1);
+
+
+        if (ownerUid == null) {
+            Log.e("BOSS_ERROR", "User ID je null!");
+            Toast.makeText(this, "Greška: nedostaje korisnički ID", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        // Inicijalizacija UI
         tvBossHp = findViewById(R.id.tv_boss_hp);
-        tvBossHpPercentage = findViewById(R.id.tv_boss_hp_percentage);
-        imgBoss = findViewById(R.id.img_boss);
-        progressBossHp = findViewById(R.id.progress_boss_hp);
-
-        // Rewards UI
-        tvRewardXp = findViewById(R.id.tv_reward_xp);
-        tvRewardCoins = findViewById(R.id.tv_reward_coins);
-        tvRewardEquipment = findViewById(R.id.tv_reward_equipment);
-
-        // Player UI
+        tvBossHpPercent = findViewById(R.id.tv_boss_hp_percentage);
         tvPlayerPP = findViewById(R.id.tv_player_pp);
         tvHitChance = findViewById(R.id.tv_hit_chance);
         tvRemainingAttacks = findViewById(R.id.tv_remaining_attacks);
-
-        // Equipment UI - zakomentisano
-        // rvEquipment = findViewById(R.id.rv_equipment);
-        // tvNoEquipment = findViewById(R.id.tv_no_equipment);
-
-        // Attack History
-        cardAttackHistory = findViewById(R.id.card_attack_history);
-        layoutAttackHistory = findViewById(R.id.layout_attack_history);
-
-        // Buttons
+        progressBossHp = findViewById(R.id.progress_boss_hp);
         btnAttack = findViewById(R.id.btn_attack);
-        btnEndSession = findViewById(R.id.btn_end_session);
-    }
 
-    private void initializeData() {
-        bossManager = new BossManager(this);
-        playerBasePP = getPlayerBasePP();
-        // equippedItems = getPlayerEquippedItems(); // Oprema isključena
-        playerTotalPP = calculateTotalPP();
-        stageStats = getStageStatsFromUserSystem();
-        Boss currentBoss = bossManager.getCurrentBoss();
-        //currentRewards = new BossRewards(currentBoss.getLevel());
-    }
+        // Učitaj podatke
+        loadUserData();
+        loadBossData();
 
-    // private void setupRecyclerView() { ... } // Oprema isključena
-
-    private void setupListeners() {
         btnAttack.setOnClickListener(v -> performAttack());
-        btnEndSession.setOnClickListener(v -> endSessionManually());
     }
 
-    private void startNewSession() {
-      //  currentSession = bossManager.startNewFightSession(playerTotalPP, stageStats);
+    private void loadUserData() {
+        db.collection("users").document(ownerUid)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        userPP = doc.getLong("powerPoints").intValue();
+                        userSuccessRate = doc.getDouble("successRate");
+                        tvPlayerPP.setText(userPP + " PP");
+                        tvHitChance.setText((int) userSuccessRate + "%");
+                    }
+                });
     }
 
-    private void updateUI() {
-      /*  Boss currentBoss = currentSession.getBoss();
-        tvBossLevel.setText("BOSS NIVO " + currentBoss.getLevel());
-        tvBossHp.setText(currentBoss.getCurrentHp() + " / " + currentBoss.getMaxHp() + " HP");
-        float hpPercentage = currentBoss.getHpPercentage();
-        tvBossHpPercentage.setText(String.format("%.0f%%", hpPercentage));
-        animateProgressBar(progressBossHp, currentBoss.getCurrentHp());
-        progressBossHp.setMax(currentBoss.getMaxHp());
-        updateBossImage(currentBoss.getLevel());
-        tvRewardXp.setText(currentRewards.getXpRewardText());
-        tvRewardCoins.setText(currentRewards.getCoinsRewardText());
-        // tvRewardEquipment.setText(currentRewards.getEquipmentRewardText()); // Oprema isključena
-        tvPlayerPP.setText(playerTotalPP + " PP");
-        tvHitChance.setText(stageStats.getSuccessRateFormatted());
-        int remaining = currentSession.getRemainingAttacks();
-        tvRemainingAttacks.setText(remaining + " / 5");
+    private void loadBossData() {
+        String bossDocId = ownerUid + "_boss_" + bossLevel;
+        db.collection("bosses").document(bossDocId)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        Long hpVal = doc.getLong("hp");
+                        Long maxHpVal = doc.getLong("maxHp");
 
-        if (currentSession.hasAttacksRemaining() && !currentSession.isBossDefeated()) {
-            btnAttack.setEnabled(true);
-            btnEndSession.setVisibility(View.VISIBLE);
-        } else {
-            btnAttack.setEnabled(false);
-            if (currentSession.isSessionCompleted()) {
-                btnEndSession.setVisibility(View.VISIBLE);
-                btnEndSession.setText(currentSession.isBossDefeated() ?
-                        "🏆 PREUZMI NAGRADE" : "😔 ZAVRŠI SESIJU");
-            }
-        }
-
-        updateAttackHistory();*/
+                        bossHp = hpVal != null ? hpVal.intValue() : 200;
+                        bossMaxHp = maxHpVal != null ? maxHpVal.intValue() : 200;
+                    } else {
+                        bossHp = 200;
+                        bossMaxHp = 200;
+                        db.collection("bosses").document("boss_" + bossLevel)
+                                .set(new Boss(bossHp, bossMaxHp));
+                    }
+                    updateBossUi();
+                });
     }
-
-    private void updateAttackHistory() {
-       /* List<BossAttackResult> history = currentSession.getAttackHistory();
-        if (history.isEmpty()) {
-            cardAttackHistory.setVisibility(View.GONE);
-            return;
-        }
-        cardAttackHistory.setVisibility(View.VISIBLE);
-        layoutAttackHistory.removeAllViews();
-        for (BossAttackResult result : history) {
-            View attackView = createAttackHistoryItem(result);
-            layoutAttackHistory.addView(attackView);
-        }*/
-    }
-
-  /*  private View createAttackHistoryItem(BossAttackResult result) {
-        View view = LayoutInflater.from(this)
-                .inflate(R.layout.item_attack_result, layoutAttackHistory, false);
-        TextView tvAttackNumber = view.findViewById(R.id.tv_attack_number);
-        TextView tvAttackResult = view.findViewById(R.id.tv_attack_result);
-        TextView tvDamage = view.findViewById(R.id.tv_damage);
-        tvAttackNumber.setText("Napad #" + result.getAttackNumber());
-        tvAttackResult.setText(result.getResultMessage());
-        if (result.isHit()) {
-            tvDamage.setText("-" + result.getDamageDealt() + " HP");
-            tvDamage.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_light));
-            tvAttackResult.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_light));
-        } else {
-            tvDamage.setText("PROMAŠAJ");
-            tvDamage.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
-            tvAttackResult.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
-        }
-        return view;
-    }
-*/
-    private void animateProgressBar(ProgressBar progressBar, int targetProgress) {
-        ObjectAnimator animation = ObjectAnimator.ofInt(progressBar, "progress", progressBar.getProgress(), targetProgress);
-        animation.setDuration(500);
-        animation.setInterpolator(new DecelerateInterpolator());
-        animation.start();
-    }
-
-   /* private void updateBossImage(int bossLevel) {
-        int imageRes;
-        if (bossLevel >= 20) imageRes = R.drawable.boss_dragon;
-        else if (bossLevel >= 15) imageRes = R.drawable.boss_demon;
-        else if (bossLevel >= 10) imageRes = R.drawable.boss_giant;
-        else if (bossLevel >= 5) imageRes = R.drawable.boss_knight;
-       // else imageRes = R.drawable.boss_goblin;
-        try {
-            imgBoss.setImageResource(imageRes);
-        } catch (Exception e) {
-            imgBoss.setImageResource(R.drawable.ic_boss_placeholder);
-        }
-    }*/
 
     private void performAttack() {
-       /* if (!currentSession.hasAttacksRemaining()) {
+        if (remainingAttacks <= 0) {
             Toast.makeText(this, "Nemaš više pokušaja!", Toast.LENGTH_SHORT).show();
             return;
         }
-        btnAttack.setEnabled(false);
-        animateAttack();
-        btnAttack.postDelayed(() -> {
-            BossAttackResult result = currentSession.performAttack();
-            showAttackResult(result);
-            updateUI();
-            if (currentSession.isSessionCompleted()) {
-                btnAttack.postDelayed(() -> handleSessionCompletion(), 1500);
-            } else {
-                btnAttack.setEnabled(true);
+
+        remainingAttacks--;
+
+        Random random = new Random();
+        int chance = random.nextInt(100);
+
+        // Provera da li je napad uspešan
+        if (chance < userSuccessRate) {
+            bossHp -= userPP;
+            if (bossHp < 0) bossHp = 0;
+
+            Toast.makeText(this, "Uspešan napad! Boss je izgubio " + userPP + " HP!", Toast.LENGTH_SHORT).show();
+
+            // 🔹 Pravi ID dokumenta: ownerUid + "_" + bossId
+            String bossDocId = ownerUid + "_boss_" + bossLevel;
+
+            // Kreiranje objekta Boss za update
+            Boss updatedBoss = new Boss(
+                    "boss_" + bossLevel, // id
+                    ownerUid,
+                    bossHp,
+                    bossLevel,
+                    bossMaxHp,
+                    bossHp == 0 // defeated = true ako je HP 0
+            );
+
+            // Ažuriranje Firestore dokumenta sa merge opcijom
+            db.collection("bosses").document(bossDocId)
+                    .set(updatedBoss, com.google.firebase.firestore.SetOptions.merge())
+                    .addOnSuccessListener(aVoid -> Log.d("BOSS_DEBUG", "Boss updated successfully"))
+                    .addOnFailureListener(e -> Log.e("BOSS_DEBUG", "Error updating boss: " + e.getMessage()));
+
+            // Ako je boss pobijeđen, pokaži toast
+            if (bossHp == 0) {
+                // ID bossa
+                // Ažuriranje bossa na defeated
+                db.collection("bosses").document(bossDocId)
+                        .update("defeated", true)
+                        .addOnSuccessListener(aVoid -> Log.d("BOSS_DEBUG", "Boss defeated!"));
+
+                // --- PRIBAVLJANJE I UPDATE NOVČIĆA ---
+                db.collection("users").document(ownerUid)
+                        .get()
+                        .addOnSuccessListener(doc -> {
+                            if (doc.exists()) {
+                                long currentCoins = doc.getLong("coins") != null ? doc.getLong("coins") : 0;
+
+                                // Izračunavanje nagrade
+                                long reward;
+                                if (bossLevel == 1) {
+                                    reward = 200; // prvi boss
+                                } else {
+                                    // Nagrada = 200 * 1.2^(bossLevel-1)
+                                    reward = Math.round(200 * Math.pow(1.2, bossLevel - 1));
+                                }
+
+                                long newCoins = currentCoins + reward;
+
+                                // Update korisnika
+                                db.collection("users").document(ownerUid)
+                                        .update("coins", newCoins)
+                                        .addOnSuccessListener(aVoid ->
+                                                Toast.makeText(this, "Osvojila si " + reward + " novčića!", Toast.LENGTH_SHORT).show()
+                                        )
+                                        .addOnFailureListener(e ->
+                                                Log.e("BOSS_DEBUG", "Greška pri update-u novčića: " + e.getMessage())
+                                        );
+                            }
+                        })
+                        .addOnFailureListener(e ->
+                                Log.e("BOSS_DEBUG", "Greška pri dohvatu korisnika: " + e.getMessage())
+                        );
+
+                Toast.makeText(this, "🎉 Pobedila si Bossa!", Toast.LENGTH_LONG).show();
             }
-        }, 800);*/
-    }
 
-    private void animateAttack() {
-        btnAttack.animate().scaleX(0.9f).scaleY(0.9f).setDuration(100)
-                .withEndAction(() -> btnAttack.animate().scaleX(1f).scaleY(1f).setDuration(100).start())
-                .start();
-        imgBoss.animate().translationX(-15f).setDuration(50)
-                .withEndAction(() -> imgBoss.animate().translationX(15f).setDuration(50)
-                        .withEndAction(() -> imgBoss.animate().translationX(-10f).setDuration(50)
-                                .withEndAction(() -> imgBoss.animate().translationX(0f).setDuration(50).start())
-                                .start())
-                        .start())
-                .start();
-    }
 
-  /*  private void showAttackResult(BossAttackResult result) {
-        String message = result.getResultMessage();
-        if (result.isHit()) {
-            Toast.makeText(this, message + "\nPreostalo: " + result.getRemainingBossHp() + " HP",
-                    Toast.LENGTH_SHORT).show();
         } else {
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Napad nije uspeo 😢", Toast.LENGTH_SHORT).show();
         }
-    }*/
 
-    private void handleSessionCompletion() {
-        /*BossManager.SessionCompletionResult completion = bossManager.completeSession();
-        if (completion.bossDefeated) showVictoryDialog(completion);
-        else showDefeatDialog(completion);*/
+        updateBossUi();
     }
 
-    private void endSessionManually() {
-      /*  if (currentSession.isBossDefeated()) handleSessionCompletion();
-        else new AlertDialog.Builder(this)
-                .setTitle("Potvrda")
-                .setMessage("Da li želiš da završiš sesiju? Boss neće biti poražen.")
-                .setPositiveButton("Da", (dialog, which) -> handleSessionCompletion())
-                .setNegativeButton("Ne", null)
-                .show();*/
-    }
 
-   /* private void showVictoryDialog(BossManager.SessionCompletionResult completion) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_boss_victory, null);
-        builder.setView(dialogView);
-        TextView tvVictoryTitle = dialogView.findViewById(R.id.tv_victory_title);
-        TextView tvVictoryMessage = dialogView.findViewById(R.id.tv_victory_message);
-        TextView tvVictoryXp = dialogView.findViewById(R.id.tv_victory_xp);
-        TextView tvVictoryCoins = dialogView.findViewById(R.id.tv_victory_coins);
-        TextView tvStats = dialogView.findViewById(R.id.tv_victory_stats);
-        tvVictoryTitle.setText("🏆 POBEDA! 🏆");
-        tvVictoryMessage.setText("Pobedio si Boss-a nivoa " + completion.statistics.initialBossHp + "!");
-        tvVictoryXp.setText(currentRewards.getXpRewardText());
-        tvVictoryCoins.setText(currentRewards.getCoinsRewardText());
-        String stats = String.format("Pogoci: %d/%d (%.0f%%)\nUkupna šteta: %d",
-                completion.statistics.successfulHits,
-                completion.statistics.totalAttacks,
-                completion.statistics.getActualHitRate(),
-                completion.statistics.totalDamage);
-        tvStats.setText(stats);
-        builder.setPositiveButton("Nastavi", (dialog, which) -> {
-            // giveRewardsToPlayer(currentRewards); // Oprema deo isključen
-            resetForNextBoss();
-            dialog.dismiss();
-        });
-        builder.setCancelable(false);
-        builder.create().show();
-    }*/
-
-    /*private void showDefeatDialog(BossManager.SessionCompletionResult completion) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        String message = String.format(
-                "Nisi uspeo da poraziš bosa!\n\n" +
-                        "Pogoci: %d/%d\n" +
-                        "Šteta: %d/%d HP\n" +
-                        "Boss HP: %d\n\n" +
-                        "Pokušaj ponovo nakon što poboljšaš svoju uspešnost!",
-                completion.statistics.successfulHits,
-                completion.statistics.totalAttacks,
-                completion.statistics.totalDamage,
-                completion.statistics.initialBossHp,
-                completion.statistics.finalBossHp
-        );
-        builder.setTitle("😔 Poraz")
-                .setMessage(message)
-                .setPositiveButton("Razumem", (dialog, which) -> {
-                    finish();
-                    dialog.dismiss();
-                })
-                .setCancelable(false)
-                .create()
-                .show();
-    }*/
-
-    /*private void resetForNextBoss() {
-        bossManager.resetStageStats();
-        currentRewards = new BossRewards(bossManager.getCurrentBoss().getLevel());
-        startNewSession();
-        updateUI();
-    }
-*/
-    private int calculateTotalPP() {
-        int total = playerBasePP;
-        // for (Equipment equipment : equippedItems) total += equipment.getPowerBonus(); // Oprema isključena
-        return total;
-    }
-
-    private int getPlayerBasePP() {
-        return 150;
-    }
-
-    // private List<Equipment> getPlayerEquippedItems() { ... } // Oprema isključena
-
-    private StageStats getStageStatsFromUserSystem() {
-        int completedTasks = 10;
-        int totalTasks = 15;
-        return new StageStats(completedTasks, totalTasks);
+    private void updateBossUi() {
+        tvBossHp.setText(bossHp + " / " + bossMaxHp + " HP");
+        progressBossHp.setMax(bossMaxHp);
+        progressBossHp.setProgress(bossHp);
+        int percent = (int) ((bossHp * 100.0f) / bossMaxHp);
+        tvBossHpPercent.setText(percent + "%");
+        tvRemainingAttacks.setText(remainingAttacks + " / 5");
     }
 }

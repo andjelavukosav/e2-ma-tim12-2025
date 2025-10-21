@@ -1,68 +1,59 @@
 package com.example.mobil2025.model;
 
 public class Boss {
+    private String id;          // Jedinstveni ID bosa, npr. "boss_1"
+    private String ownerUid;
+    private boolean defeated;   // Da li je bos pobijeđen
+
     private int level;
+
     private int maxHp;
     private int currentHp;
 
-    public Boss(int level) {
-        this.level = level;
-        this.maxHp = calculateBossHp(level);
+
+    public Boss() {
+        // Firestore zahteva prazni konstruktor
+    }
+
+    public Boss(int hp, int maxHp){
+        this.currentHp = hp;
+        this.maxHp = maxHp;
+    }
+
+    public Boss(String id, String ownerUid, int maxHp, int level) {
+        this.id = id;
+        this.ownerUid = ownerUid;
+        this.maxHp = maxHp;
         this.currentHp = maxHp;
+        this.defeated = false;
+        this.level = level;
     }
 
-    /**
-     * Kalkulacija HP za boss-a na osnovu nivoa
-     * Nivo 1: 200 HP
-     * Nivo 2+: HP prethodnog * 2 + HP prethodnog / 2
-     */
-    private int calculateBossHp(int level) {
-        if (level == 1) {
-            return 200;
-        }
-
-        int previousHp = calculateBossHp(level - 1);
-        return previousHp * 2 + previousHp / 2;
+    public Boss(String id, String ownerUid, int hp, int level, int maxHp, boolean defeated) {
+        this.id = id;
+        this.ownerUid = ownerUid;
+        this.currentHp = hp;
+        this.level = level;
+        this.maxHp = maxHp;
+        this.defeated = defeated;
     }
 
-    /**
-     * Napad na boss-a
-     * @param damage - PP (snaga igrača)
-     * @return true ako je boss poražen, false ako nije
-     */
-    public boolean takeDamage(int damage) {
-        currentHp -= damage;
-        if (currentHp < 0) {
-            currentHp = 0;
-        }
-        return isDefeated();
-    }
+        // Getteri i setteri
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    public boolean isDefeated() {
-        return currentHp <= 0;
-    }
+    public String getOwnerUid() { return ownerUid; }
+    public void setOwnerUid(String ownerUid) { this.ownerUid = ownerUid; }
 
-    /**
-     * Vraća procenat preostale HP
-     */
-    public float getHpPercentage() {
-        return ((float) currentHp / maxHp) * 100;
-    }
+    public int getHp() { return currentHp; }
+    public void setHp(int hp) { this.currentHp = hp; }
 
-    // Getteri
-    public int getLevel() {
-        return level;
-    }
+    public int getMaxHp() { return maxHp; }
+    public void setMaxHp(int maxHp) { this.maxHp = maxHp; }
 
-    public int getMaxHp() {
-        return maxHp;
-    }
+    public boolean isDefeated() { return defeated; }
+    public void setDefeated(boolean defeated) { this.defeated = defeated; }
 
-    public int getCurrentHp() {
-        return currentHp;
-    }
-
-    public void setCurrentHp(int hp) {
-        this.currentHp = Math.max(0, Math.min(hp, maxHp));
-    }
+    public int getLevel() { return level; }
+    public void setLevel(int level) { this.level = level; }
 }

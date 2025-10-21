@@ -22,15 +22,22 @@ public class LevelProgressActivity extends AppCompatActivity {
     private TextView textLevelTitle, textLevel, textPP, textXP, textXPToNext;
     private FirebaseAuth auth;
     private FirebaseFirestore db;
+    private UserProfile currentUser; // 🔹 dodajemo ovo!
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_level_progress);
         Button btnGoToBoss = findViewById(R.id.btnGoToBoss);
+
         btnGoToBoss.setOnClickListener(v -> {
-            Intent intent = new Intent(LevelProgressActivity.this, BossFightActivity.class);
-            startActivity(intent);
+            if (currentUser != null) {
+                Intent intent = new Intent(LevelProgressActivity.this, BossFightActivity.class);
+                intent.putExtra("uid", currentUser.uid);          // prosleđujemo UID korisnika
+                intent.putExtra("level", currentUser.getLevel());  // prosleđujemo trenutni nivo
+                startActivity(intent);
+            }
         });
         textLevelTitle = findViewById(R.id.textLevelTitle);
         textLevel = findViewById(R.id.textLevel);
@@ -53,8 +60,10 @@ public class LevelProgressActivity extends AppCompatActivity {
                 .addOnSuccessListener(documentSnapshot -> {
                     if(documentSnapshot.exists()){
                         UserProfile profile = documentSnapshot.toObject(UserProfile.class);
-                        if(profile != null) displayProfile(profile);
-                    }
+                        if (profile != null) {
+                            currentUser = profile; // 🔹 ovde ga čuvamo da ga koristimo kasnije
+                            displayProfile(profile);
+                        }                    }
                 });
     }
 
