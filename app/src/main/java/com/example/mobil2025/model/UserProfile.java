@@ -1,5 +1,7 @@
 package com.example.mobil2025.model;
 
+import android.util.Log;
+
 import com.example.mobil2025.data.repo.LevelRepository;
 
 import java.io.Serializable;
@@ -10,10 +12,21 @@ public class UserProfile implements Serializable {
     public String uid;
     public String email;
     public String username;   // IMMUTABLE
+
+    public double getSuccessRate() {
+        return successRate;
+    }
+
+    public void setSuccessRate(double successRate) {
+        this.successRate = successRate;
+    }
+
     public String avatarKey;  // IMMUTABLE (npr. "avatar_1")
     public long createdAt;
     public boolean enabled;   // ✅ novo polje
+    public double successRate; // uspešnost korisnika (0.0 - 100.0)
 
+    public long lastLevelUpAt; // vreme kada je korisnik prešao na trenutni nivo
 
     public int level;           // trenutni nivo korisnika
     public String title;        // titula (npr. "Početnik", "Iskusni igrač", "Majstor")
@@ -51,6 +64,9 @@ public class UserProfile implements Serializable {
         this.equipment = List.of();
         this.qrCodeUrl = "";
         this.friends = List.of();
+        this.lastLevelUpAt = createdAt; // prvi nivo = vreme kreiranja profila
+        this.successRate = 0.0;
+
     }
 
     // ✅ Ako želiš dodatni konstruktor sa kontrolom enable polja:
@@ -84,21 +100,31 @@ public class UserProfile implements Serializable {
     }
 
 
-    public UserProfile(String uid, String email, String username, String avatarKey, long createdAt, List<String> friends) {
-        this(uid, email, username, avatarKey, createdAt);
-        this.friends = friends;
-    }
 
     public void addXP(int xpGained) {
         this.xp += xpGained;
+
+        Log.d("UserProfile", "Dodato XP: " + xpGained + ", Ukupno XP pre update-a: " + this.xp);
+
         updateLevel();  // automatski ažurira nivo i PP
     }
 
     private void updateLevel() {
         Level currentLevel = LevelRepository.getLevelForXP(this.xp);
+
+        // 🔹 Ispis trenutnog level-a pre update-a polja
+        Log.d("UserProfile", "CurrentLevel pre update-a: level=" + currentLevel.getLevel()
+                + ", title=" + currentLevel.getTitle()
+                + ", PP=" + currentLevel.getPowerPoints());
+
         this.level = currentLevel.getLevel();
         this.title = currentLevel.getTitle();
         this.powerPoints = currentLevel.getPowerPoints();
+
+        // 🔹 Ispis nakon update-a polja
+        Log.d("UserProfile", "UserProfile posle update-a: level=" + this.level
+                + ", title=" + this.title
+                + ", PP=" + this.powerPoints);
     }
 
     public int getXp() { return xp; }
@@ -107,28 +133,45 @@ public class UserProfile implements Serializable {
     public int getPowerPoints() { return powerPoints; }
 
     public int addXPAndGetRemainingToNextLevel(int xpGained) {
+        // 🔹 Zapamti XP pre dodavanja da bismo mogli da proverimo prelazak nivoa
+        int previousXP = this.xp;
         this.xp += xpGained;
 
+        Level previousLevel;
         Level currentLevel;
         Level nextLevel;
 
+        if (previousXP < LevelRepository.getLevels().get(0).getRequiredXP()) {
+            // Korisnik pre dodavanja XP-a nije imao ni prvi nivo
+            previousLevel = new Level(0, 0, 0, "Nema nivoa");
+        } else {
+            previousLevel = LevelRepository.getLevelForXP(previousXP);
+        }
+
         if (this.xp < LevelRepository.getLevels().get(0).getRequiredXP()) {
-            // korisnik još nije dostigao prvi nivo
             currentLevel = new Level(0, 0, 0, "Nema nivoa");
-            nextLevel = LevelRepository.getLevels().get(0); // prvi nivo kao "sljedeći"
+            nextLevel = LevelRepository.getLevels().get(0);
         } else {
             currentLevel = LevelRepository.getLevelForXP(this.xp);
             nextLevel = LevelRepository.getNextLevel(currentLevel);
         }
 
+        // 🔹 Ako je korisnik prešao na novi nivo
+        if (currentLevel.getLevel() > previousLevel.getLevel()) {
+            this.lastLevelUpAt = System.currentTimeMillis(); // zabeleži datum prelaska
+
+        }
+
+        // 🔹 Ažuriraj osnovne podatke o nivou
         this.level = currentLevel.getLevel();
         this.title = currentLevel.getTitle();
         this.powerPoints = currentLevel.getPowerPoints();
 
-        if(nextLevel != null){
+        // 🔹 Vrati XP potreban do sledećeg nivoa
+        if (nextLevel != null) {
             return nextLevel.getRequiredXP() - this.xp;
         } else {
-            return 0; // ako je korisnik na max nivou
+            return 0; // ako je korisnik na maksimalnom nivou
         }
     }
 
@@ -155,6 +198,7 @@ public class UserProfile implements Serializable {
     public void removeBrokenClothing() {
         clothingInventory.removeIf(ClothingItem::isBroken);
     }
+
 
 }
 

@@ -42,4 +42,15 @@
         android:textSize="18sp"
         android:paddingTop="8dp"/>
 
+    <!-- Dugme za prelazak na Boss stranicu -->
+    <Button
+        android:id="@+id/btnGoToBoss"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Idi na Boss stranicu"
+        android:layout_marginTop="24dp"
+        android:backgroundTint="@android:color/holo_red_dark"
+        android:textColor="@android:color/white"
+        android:textStyle="bold" />
+
 </LinearLayout>

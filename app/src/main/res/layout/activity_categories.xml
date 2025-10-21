@@ -7,14 +7,6 @@
     android:layout_height="match_parent"
     tools:context=".ui.category.CategoryListActivity">
 
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/topAppBar"
-        android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorPrimary"
-        android:title="Kategorije"
-        app:navigationIcon="@drawable/ic_arrow_back" />
-
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvCategories"
         android:layout_width="match_parent"

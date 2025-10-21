@@ -1,0 +1,10 @@
+<!-- res/drawable/ic_boss_placeholder.xml - Boss placeholder -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    <path
+        android:fillColor="#e94560"
+        android:pathData="M100,20c-44.18,0 -80,35.82 -80,80s35.82,80 80,80s80,-35.82 80,-80S144.18,20 100,20zM70,90c0,-5.52 4.48,-10 10,-10s10,4.48 10,10s-4.48,10 -10,10S70,95.52 70,90zM100,150c-16.54,0 -30,-13.46 -30,-30h60C130,136.54 116.54,150 100,150zM120,100c-5.52,0 -10,-4.48 -10,-10s4.48,-10 10,-10s10,4.48 10,10S125.52,100 120,100z"/>
+</vector>

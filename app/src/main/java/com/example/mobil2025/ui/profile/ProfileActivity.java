@@ -15,6 +15,7 @@ import com.example.mobil2025.model.ClothingItem;
 import com.example.mobil2025.model.PotionItem;
 import com.example.mobil2025.model.UserProfile;
 import com.example.mobil2025.ui.auth.LoginActivity;
+import com.example.mobil2025.ui.boss.BossFightActivity;
 import com.example.mobil2025.ui.category.CategoryListActivity;
 import com.example.mobil2025.ui.inventory.ActiveEquipmentActivity;
 import com.example.mobil2025.ui.inventory.InventoryActivity;
@@ -67,6 +68,7 @@ public class ProfileActivity extends AppCompatActivity {
 
         // 4️ Postavljanje akcija na dugmad
         setupListeners();
+
     }
 
     private void initFirebase() {

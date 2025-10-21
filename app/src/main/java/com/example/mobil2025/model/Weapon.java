@@ -13,6 +13,12 @@ public class Weapon extends Equipment {
         this.effectType = effectType;
     }
 
+    public Weapon(String id, String name, WeaponType weaponType){
+        super(id, name, 0, EquipmentType.WEAPON); // cena 0, jer se ne kupuje
+        this.uid = id;
+        this.name = name;
+        this.weaponType = weaponType;
+    }
     // --- Getteri ---
     public WeaponType getWeaponType() { return weaponType; }
     public double getBonusValue() { return bonusValue; }
