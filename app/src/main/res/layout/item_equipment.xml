@@ -1,0 +1,38 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/border_card"
+    android:layout_marginBottom="8dp">
+
+    <TextView
+        android:id="@+id/textEquipmentName"
+        android:text="Ime opreme"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+    <TextView
+        android:id="@+id/textEquipmentType"
+        android:text="Tip opreme"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingTop="2dp"/>
+
+    <TextView
+        android:id="@+id/textEquipmentPrice"
+        android:text="Cena: 100"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingTop="2dp"/>
+
+    <Button
+        android:id="@+id/buttonBuy"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Kupi"
+        android:layout_marginTop="8dp"/>
+
+</LinearLayout>
