@@ -94,7 +94,7 @@ public class AllianceRepository {
     }
 
 
-    public void acceptInvitation(AllianceInvitation invitation, AllianceCallback callback) {
+    /*public void acceptInvitation(AllianceInvitation invitation, AllianceCallback callback) {
         String currentUserId = auth.getCurrentUser().getUid();
 
         db.collection("alliances").document(invitation.getAllianceId())
@@ -112,7 +112,7 @@ public class AllianceRepository {
                     /*WriteBatch batch = db.batch();
                     batch.set(db.collection("alliances").document(alliance.getId()), alliance);
                        */
-                    WriteBatch batch = db.batch();
+                    /*WriteBatch batch = db.batch();
                     batch.update(
                             db.collection("alliances").document(alliance.getId()),
                             "memberIds", FieldValue.arrayUnion(currentUserId)
@@ -143,7 +143,67 @@ public class AllianceRepository {
                             .addOnFailureListener(e -> callback.onFailure(e.getMessage()));
                 })
                 .addOnFailureListener(e -> callback.onFailure(e.getMessage()));
+    }*/
+
+    public void acceptInvitation(AllianceInvitation invitation, AllianceCallback callback) {
+        String currentUserId = auth.getCurrentUser().getUid();
+
+        // Prvo provjeri da li je korisnik već član nekog saveza
+        db.collection("alliances")
+                .whereArrayContains("memberIds", currentUserId)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+
+                    // Ako jeste, ukloni ga iz starog saveza
+                    for (var doc : querySnapshot.getDocuments()) {
+                        String oldAllianceId = doc.getId();
+                        db.collection("alliances").document(oldAllianceId)
+                                .update("memberIds", FieldValue.arrayRemove(currentUserId));
+                    }
+
+                    // Zatim dohvatimo novi savez na koji prihvata poziv
+                    db.collection("alliances").document(invitation.getAllianceId())
+                            .get()
+                            .addOnSuccessListener(documentSnapshot -> {
+                                Alliance alliance = documentSnapshot.toObject(Alliance.class);
+                                if (alliance == null) {
+                                    callback.onFailure("Savez ne postoji.");
+                                    return;
+                                }
+
+                                // Dodaj korisnika u novi savez
+                                db.collection("alliances").document(alliance.getId())
+                                        .update("memberIds", FieldValue.arrayUnion(currentUserId));
+
+                                // Ažuriraj status poziva
+                                invitation.setStatus(InvitationStatus.ACCEPTED);
+                                db.collection("alliance_invitations").document(invitation.getId())
+                                        .update("status", InvitationStatus.ACCEPTED.name());
+
+                                // Napravi notifikaciju za kreatora saveza
+                                String notificationId = UUID.randomUUID().toString();
+                                Map<String, Object> notificationData = new HashMap<>();
+                                notificationData.put("id", notificationId);
+                                notificationData.put("receiverId", invitation.getSenderId());
+                                notificationData.put("relatedInvitationId", invitation.getId());
+                                notificationData.put("type", "INVITE_ACCEPTED");
+                                notificationData.put("message", "Korisnik " + currentUserId +
+                                        " je prihvatio tvoj poziv u savez '" + alliance.getName() + "'");
+                                notificationData.put("read", false);
+                                notificationData.put("timestamp", FieldValue.serverTimestamp());
+
+                                db.collection("notifications").document(notificationId)
+                                        .set(notificationData)
+                                        .addOnSuccessListener(aVoid -> callback.onSuccess(alliance))
+                                        .addOnFailureListener(e -> callback.onFailure(e.getMessage()));
+
+                            })
+                            .addOnFailureListener(e -> callback.onFailure(e.getMessage()));
+
+                })
+                .addOnFailureListener(e -> callback.onFailure(e.getMessage()));
     }
+
 
 
     public void rejectInvitation(AllianceInvitation invitation, AllianceCallback callback) {
