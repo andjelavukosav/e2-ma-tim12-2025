@@ -21,6 +21,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -140,57 +141,7 @@ public class TaskRepository {
                 .addOnFailureListener(err);
     }
 
-    public void deleteTask(@NonNull String taskId,
-                           @NonNull OnSuccessListener<Void> ok,
-                           @NonNull OnFailureListener err) {
-        db.collection("tasks").document(taskId)
-                .delete()
-                .addOnSuccessListener(ok)
-                .addOnFailureListener(err);
-    }
 
-    /** Brisanje taska uz čišćenje budućih occurrences — dodaj ownerUid filter na query! */
-    /*public void deleteTaskWithRule(@NonNull Task t,
-                                   @NonNull OnSuccessListener<Void> ok,
-                                   @NonNull OnFailureListener err) {
-        if (t.id == null) { err.onFailure(new IllegalArgumentException("No task")); return; }
-
-        if (!Boolean.TRUE.equals(t.recurring) && "done".equalsIgnoreCase(t.status)) {
-            err.onFailure(new IllegalStateException("Cannot delete finished one-time task"));
-            return;
-        }
-
-        String uid = FirebaseAuth.getInstance().getUid();
-        if (uid == null) { err.onFailure(new IllegalStateException("Not signed in")); return; }
-
-        if (Boolean.TRUE.equals(t.recurring)) {
-            db.collection("occurrences")
-                    .whereEqualTo("ownerUid", uid)
-                    .whereEqualTo("taskId", t.id)
-                    .get()
-                    .addOnSuccessListener(snapshot -> {
-                        long now = System.currentTimeMillis();
-                        snapshot.getDocuments().forEach(doc -> {
-                            Long startAt = doc.getLong("startAt");
-                            if (startAt != null && startAt > now) {
-                                doc.getReference().delete();
-                            }
-                        });
-                        db.collection("tasks").document(t.id)
-                                .delete()
-                                .addOnSuccessListener(ok)
-                                .addOnFailureListener(err);
-                    })
-                    .addOnFailureListener(err);
-
-        } else {
-            db.collection("tasks").document(t.id)
-                    .delete()
-                    .addOnSuccessListener(ok)
-                    .addOnFailureListener(err);
-        }
-    }
-*/
     /** Brisanje taska uz čišćenje intervala koji nisu 'done' */
     public void deleteTaskWithRule(@NonNull Task t,
                                    @NonNull OnSuccessListener<Void> ok,
@@ -274,4 +225,50 @@ public class TaskRepository {
                 .addOnSuccessListener(ok)
                 .addOnFailureListener(err);
     }
+    public void calculateUserSuccessRate(String uid, OnSuccessListener<Double> ok, OnFailureListener err) {
+        db.collection("tasks")
+                .whereEqualTo("ownerUid", uid)
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (snapshot.isEmpty()) {
+                        ok.onSuccess(0.0);
+                        return;
+                    }
+
+                    int total = 0;
+                    int done = 0;
+
+                    for (DocumentSnapshot doc : snapshot.getDocuments()) {
+                        String status = doc.getString("status");
+                        Boolean recurring = doc.getBoolean("recurring");
+
+                        // preskoči otkazane/pauzirane zadatke
+                        if ("paused".equalsIgnoreCase(status) || "canceled".equalsIgnoreCase(status)) {
+                            continue;
+                        }
+
+                        if (Boolean.TRUE.equals(recurring)) {
+                            // računaj intervale iz ponavljajućih zadataka
+                            List<Map<String, Object>> intervals = (List<Map<String, Object>>) doc.get("intervals");
+                            if (intervals != null) {
+                                for (Map<String, Object> i : intervals) {
+                                    String st = (String) i.get("status");
+                                    if ("paused".equalsIgnoreCase(st) || "canceled".equalsIgnoreCase(st)) continue;
+                                    total++;
+                                    if ("done".equalsIgnoreCase(st)) done++;
+                                }
+                            }
+                        } else {
+                            total++;
+                            if ("done".equalsIgnoreCase(status)) done++;
+                        }
+                    }
+
+                    double successRate = (total > 0) ? (done * 100.0 / total) : 0.0;
+                    ok.onSuccess(successRate);
+
+                })
+                .addOnFailureListener(err);
+    }
+
 }

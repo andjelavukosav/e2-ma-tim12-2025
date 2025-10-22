@@ -53,7 +53,6 @@ public class CategoryListActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_categories);
 
-        topBar = findViewById(R.id.topAppBar);
         rv = findViewById(R.id.rvCategories);
         fab = findViewById(R.id.fabAddCategory);
 
