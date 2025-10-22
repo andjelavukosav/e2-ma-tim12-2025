@@ -13,7 +13,7 @@
         android:id="@+id/tvMessage"
         android:text="Poziv u savez"
         android:textSize="16sp"
-        android:textColor="#000000"
+        android:textColor="#666666"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 

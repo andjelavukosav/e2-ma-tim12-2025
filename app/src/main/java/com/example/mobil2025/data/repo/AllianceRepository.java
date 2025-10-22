@@ -109,12 +109,20 @@ public class AllianceRepository {
                     // Dodaj korisnika u savez
                     alliance.addMember(currentUserId);
 
-                    WriteBatch batch = db.batch();
+                    /*WriteBatch batch = db.batch();
                     batch.set(db.collection("alliances").document(alliance.getId()), alliance);
+                       */
+                    WriteBatch batch = db.batch();
+                    batch.update(
+                            db.collection("alliances").document(alliance.getId()),
+                            "memberIds", FieldValue.arrayUnion(currentUserId)
+                    );
 
                     // Ažuriraj status poziva
                     invitation.setStatus(InvitationStatus.ACCEPTED);
-                    batch.set(db.collection("alliance_invitations").document(invitation.getId()), invitation);
+                    db.collection("alliance_invitations").document(invitation.getId())
+                            .update("status", InvitationStatus.ACCEPTED.name());
+
 
                     //  Napravi notifikaciju za kreatora saveza
                     String notificationId = UUID.randomUUID().toString();
@@ -141,7 +149,7 @@ public class AllianceRepository {
     public void rejectInvitation(AllianceInvitation invitation, AllianceCallback callback) {
         invitation.setStatus(InvitationStatus.REJECTED);
         db.collection("alliance_invitations").document(invitation.getId())
-                .set(invitation)
+                .update("status", InvitationStatus.REJECTED.name())
                 .addOnSuccessListener(aVoid -> callback.onRejected(invitation))
                 .addOnFailureListener(e -> callback.onFailure(e.getMessage()));
     }

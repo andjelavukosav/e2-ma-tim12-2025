@@ -97,7 +97,8 @@ public class NotificationsFragment extends Fragment {
                         allianceRepository.acceptInvitation(invitation, new AllianceRepository.AllianceCallback() {
                             @Override
                             public void onSuccess(Alliance alliance) {
-                                markAsRead(notification); // oznaci notifikaciju kao procitanu
+                                //markAsRead(notification); // oznaci notifikaciju kao procitanu
+                                removeNotification(notification);
                             }
                             @Override
                             public void onRejected(AllianceInvitation invitation) {}
@@ -122,7 +123,8 @@ public class NotificationsFragment extends Fragment {
                             public void onSuccess(Alliance alliance) {}
                             @Override
                             public void onRejected(AllianceInvitation invitation) {
-                                markAsRead(notification); // oznaci notifikaciju kao procitanu
+                                //markAsRead(notification); // oznaci notifikaciju kao procitanu
+                                removeNotification(notification);
                             }
                             @Override
                             public void onFailure(String error) {
@@ -138,7 +140,21 @@ public class NotificationsFragment extends Fragment {
         notification.setRead(true);
         db.collection("notifications")
                 .document(notification.getId())
-                .set(notification)
+                .update("read", true)
                 .addOnSuccessListener(aVoid -> adapter.notifyDataSetChanged());
     }
+
+    private void removeNotification(Notification notification) {
+        db.collection("notifications")
+                .document(notification.getId())
+                .delete()
+                .addOnSuccessListener(aVoid -> {
+                    notificationList.remove(notification);
+                    adapter.notifyDataSetChanged();
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(getContext(), "Greška pri uklanjanju notifikacije", Toast.LENGTH_SHORT).show()
+                );
+    }
+
 }

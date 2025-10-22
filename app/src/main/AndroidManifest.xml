@@ -104,6 +104,10 @@
 
 
 
+        <activity
+            android:name=".ui.profile.AlliancesActivity"
+            android:exported="true" />
+
 
 
     </application>

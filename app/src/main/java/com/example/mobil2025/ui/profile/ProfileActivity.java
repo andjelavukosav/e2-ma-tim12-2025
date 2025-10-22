@@ -48,7 +48,7 @@ public class ProfileActivity extends AppCompatActivity {
             btnShowTasks, btnOpenCalendar, btnLevelProgress,
             btnOpenStore, btnViewEquipment, btnViewActiveEquipment,
 
-            btnViewFriends, btnViewNotifications;
+            btnViewFriends, btnViewNotifications, btnViewAlliances;
 
     private UserProfile userProfile;
 
@@ -102,6 +102,7 @@ public class ProfileActivity extends AppCompatActivity {
         btnViewActiveEquipment = findViewById(R.id.buttonViewActiveEquipment);
         btnViewFriends = findViewById(R.id.buttonViewFriends);
         btnViewNotifications = findViewById(R.id.btnViewNotifications);
+        btnViewAlliances = findViewById(R.id.btnViewAlliances);
     }
 
     private void loadUserProfile() {
@@ -200,6 +201,12 @@ public class ProfileActivity extends AppCompatActivity {
                     .replace(R.id.fragmentContainer, new NotificationsFragment())
                     .addToBackStack(null)
                     .commit();
+        });
+
+        btnViewAlliances = findViewById(R.id.btnViewAlliances);
+        btnViewAlliances.setOnClickListener(v -> {
+            Intent intent = new Intent(ProfileActivity.this, AlliancesActivity.class);
+            startActivity(intent);
         });
 
     }
