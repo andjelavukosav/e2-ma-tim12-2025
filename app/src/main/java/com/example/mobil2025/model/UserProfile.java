@@ -29,6 +29,10 @@ public class UserProfile implements Serializable {
 
     private List<ClothingItem> clothingInventory = new ArrayList<>();
     private List<PotionItem> potionInventory = new ArrayList<>();
+
+    private String allianceId;
+
+
     // Prazan konstruktor potreban Firestore-u
     public UserProfile() {}
 
@@ -155,6 +159,7 @@ public class UserProfile implements Serializable {
     public void removeBrokenClothing() {
         clothingInventory.removeIf(ClothingItem::isBroken);
     }
+
 
 }
 

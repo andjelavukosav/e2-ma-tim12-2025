@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.bumptech.glide.Glide;
 import com.example.mobil2025.R;
+import com.example.mobil2025.data.repo.FriendRepository;
 import com.example.mobil2025.model.UserProfile;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.zxing.BarcodeFormat;
@@ -27,14 +28,18 @@ public class ProfileViewOtherActivity extends  AppCompatActivity{
 
     private UserProfile otherUser;
 
+    private FriendRepository friendRepository;
+    private boolean isAlreadyFriend = false;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile_other);
 
+        friendRepository = new FriendRepository();
+
         initViews();
         loadUserData();
-        setupAddFriend();
     }
 
     private void initViews() {
@@ -51,21 +56,26 @@ public class ProfileViewOtherActivity extends  AppCompatActivity{
 
     private void loadUserData() {
         String username = getIntent().getStringExtra("username");
+        String uid = getIntent().getStringExtra("uid");
 
-        //dohvati mi podatke iz baze prema username
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-        db.collection("usernames").document(username)
-                .get()
-                .addOnSuccessListener(doc -> {
-                    if (doc.exists()) {
-                        String uid = doc.getString("uid");
-                        fetchUserByUid(uid);
-                    } else {
-                        Toast.makeText(this, "Korisnik ne postoji", Toast.LENGTH_SHORT).show();
-                    }
-                });
-
+        if (uid != null && !uid.isEmpty()) {
+            // Ako dolazi iz QR skenera
+            fetchUserByUid(uid);
+        } else if (username != null && !username.isEmpty()) {
+            // Ako dolazi iz pretrage po username-u
+            db.collection("usernames").document(username)
+                    .get()
+                    .addOnSuccessListener(doc -> {
+                        if (doc.exists()) {
+                            String userUid = doc.getString("uid");
+                            fetchUserByUid(userUid);
+                        } else {
+                            Toast.makeText(this, "Korisnik ne postoji", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+        }
     }
 
     private void fetchUserByUid(String uid) {
@@ -91,6 +101,25 @@ public class ProfileViewOtherActivity extends  AppCompatActivity{
 
         loadAvatar(otherUser.avatarKey);
         generateQRCode(otherUser.uid);
+        checkFriendshipStatus();
+    }
+
+    private void checkFriendshipStatus() {
+        friendRepository.isFriend(otherUser.uid, isFriend -> {
+            isAlreadyFriend = isFriend;
+            updateAddFriendButton();
+        });
+    }
+
+    private void updateAddFriendButton() {
+        if (isAlreadyFriend) {
+            buttonAddFriend.setText("Ukloni prijatelja");
+            buttonAddFriend.setBackgroundColor(getResources().getColor(android.R.color.holo_red_light));
+        } else {
+            buttonAddFriend.setText("Dodaj prijatelja");
+            buttonAddFriend.setBackgroundColor(getResources().getColor(android.R.color.holo_green_light));
+        }
+        setupAddFriend();
     }
 
 
@@ -115,17 +144,47 @@ public class ProfileViewOtherActivity extends  AppCompatActivity{
         imageAvatar.setImageResource(resId);
     }
 
-    private void loadQRCode(String qrCodeUrl) {
-        // Prikaz QR koda
-        if (qrCodeUrl != null && !qrCodeUrl.isEmpty()) {
-            Glide.with(this).load(qrCodeUrl).into(imageQRCode);
-        }
-    }
 
     private void setupAddFriend() {
         buttonAddFriend.setOnClickListener(v -> {
-            // TODO: implement logic za dodavanje prijatelja u bazu/Firebase
-            Toast.makeText(this, otherUser.username + " je dodat za prijatelja!", Toast.LENGTH_SHORT).show();
+            if(isAlreadyFriend){
+                // Ukloni prijatelja
+                friendRepository.removeFriend(otherUser.uid, new FriendRepository.OnFriendActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(ProfileViewOtherActivity.this,
+                                otherUser.username + " je uklonjen iz prijatelja!",
+                                Toast.LENGTH_SHORT).show();
+                        isAlreadyFriend = false;
+                        updateAddFriendButton();
+                    }
+                    @Override
+                    public void onFailure(Exception e) {
+                        Toast.makeText(ProfileViewOtherActivity.this,
+                                "Greška: " + e.getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }else {
+                // Dodaj prijatelja
+                friendRepository.addFriend(otherUser.uid, new FriendRepository.OnFriendActionListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(ProfileViewOtherActivity.this,
+                                otherUser.username + " je dodat za prijatelja!",
+                                Toast.LENGTH_SHORT).show();
+                        isAlreadyFriend = true;
+                        updateAddFriendButton();
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        Toast.makeText(ProfileViewOtherActivity.this,
+                                "Greška: " + e.getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
         });
     }
 }

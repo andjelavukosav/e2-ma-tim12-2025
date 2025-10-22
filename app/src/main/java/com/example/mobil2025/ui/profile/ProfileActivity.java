@@ -18,6 +18,7 @@ import com.example.mobil2025.ui.auth.LoginActivity;
 import com.example.mobil2025.ui.category.CategoryListActivity;
 import com.example.mobil2025.ui.inventory.ActiveEquipmentActivity;
 import com.example.mobil2025.ui.inventory.InventoryActivity;
+import com.example.mobil2025.ui.notification.NotificationsFragment;
 import com.example.mobil2025.ui.store.StoreActivity;
 import com.example.mobil2025.ui.task.CalendarActivity;
 import com.example.mobil2025.ui.task.CreateTaskActivity;
@@ -45,7 +46,9 @@ public class ProfileActivity extends AppCompatActivity {
     private Button buttonLogout, buttonChangePassword,
             btnViewUsers, btnCreateTask, btnOpenCategories,
             btnShowTasks, btnOpenCalendar, btnLevelProgress,
-            btnOpenStore, btnViewEquipment, btnViewActiveEquipment;
+            btnOpenStore, btnViewEquipment, btnViewActiveEquipment,
+
+            btnViewFriends, btnViewNotifications;
 
     private UserProfile userProfile;
 
@@ -97,6 +100,8 @@ public class ProfileActivity extends AppCompatActivity {
         btnOpenStore = findViewById(R.id.buttonOpenStore);
         btnViewEquipment = findViewById(R.id.buttonViewEquipment);
         btnViewActiveEquipment = findViewById(R.id.buttonViewActiveEquipment);
+        btnViewFriends = findViewById(R.id.buttonViewFriends);
+        btnViewNotifications = findViewById(R.id.btnViewNotifications);
     }
 
     private void loadUserProfile() {
@@ -184,6 +189,18 @@ public class ProfileActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
+        btnViewFriends.setOnClickListener(v -> {
+            Intent intent = new Intent(this, FriendsListActivity.class);
+            startActivity(intent);
+        });
+
+        btnViewNotifications.setOnClickListener(v -> {
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.fragmentContainer, new NotificationsFragment())
+                    .addToBackStack(null)
+                    .commit();
+        });
 
     }
 

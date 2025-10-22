@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Naslov stranice -->
+    <TextView
+        android:id="@+id/tvFriendsTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="My Friends"
+        android:textSize="24sp"
+        android:layout_gravity="center"
+        android:paddingBottom="16dp"/>
+
+    <!-- Polje za naziv saveza -->
+    <EditText
+        android:id="@+id/etAllianceName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Unesite naziv saveza"
+        android:padding="12dp"/>
+
+    <!-- Dugme za kreiranje saveza / slanje poziva -->
+    <Button
+        android:id="@+id/btnCreateAlliance"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Kreiraj savez"
+        android:layout_gravity="center"
+        android:padding="12dp"
+        android:layout_marginTop="12dp"/>
+
+    <!-- Tekst pre RecyclerView za listu prijatelja -->
+    <TextView
+        android:id="@+id/tvInviteFriendsTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Pozovi prijatelje"
+        android:paddingTop="16dp"
+        android:paddingBottom="8dp"
+        android:textSize="18sp"
+        android:visibility="visible" />
+
+    <!-- Lista prijatelja -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvFriends"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="visible"/>
+</LinearLayout>
