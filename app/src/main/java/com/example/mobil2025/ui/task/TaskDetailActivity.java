@@ -1,0 +1,611 @@
+package com.example.mobil2025.ui.task;
+
+import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.os.Bundle;
+import android.util.Log;
+import android.widget.Button;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.mobil2025.R;
+import com.example.mobil2025.data.repo.BossRepository;
+import com.example.mobil2025.data.repo.CategoryRepository;
+import com.example.mobil2025.data.repo.TaskRepository;
+import com.example.mobil2025.data.repo.UserRepository;
+import com.example.mobil2025.model.Boss;
+import com.example.mobil2025.model.Category;
+import com.example.mobil2025.model.OccurrenceInterval;
+import com.example.mobil2025.model.Task;
+import com.example.mobil2025.ui.boss.BossFightActivity;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
+
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Locale;
+import java.util.Map;
+import java.util.HashMap;
+
+public class TaskDetailActivity extends AppCompatActivity {
+
+    private TextView tvName, tvDesc, tvCategory, tvStatus, tvTiming;
+    private Button btnActive, btnDone, btnPaused, btnCanceled, btnEdit, btnDelete;
+    private TextView tvXP;
+
+    private String taskId;
+    private Task current;
+    private ListenerRegistration reg;
+
+    private final TaskRepository taskRepo = new TaskRepository();
+    private final CategoryRepository catRepo = new CategoryRepository();
+    private final Map<String, Category> cats = new HashMap<>();
+
+    private final SimpleDateFormat fDate = new SimpleDateFormat("dd.MM.yyyy.", Locale.getDefault());
+    private final SimpleDateFormat fDateTime = new SimpleDateFormat("dd.MM.yyyy. HH:mm", Locale.getDefault());
+
+    @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_task_detail);
+
+        tvName = findViewById(R.id.tvName);
+        tvDesc = findViewById(R.id.tvDesc);
+        tvCategory = findViewById(R.id.tvCategory);
+        tvStatus = findViewById(R.id.tvStatus);
+        tvTiming = findViewById(R.id.tvTiming);
+        tvXP = findViewById(R.id.tvXP);
+
+        btnActive = findViewById(R.id.btnActive);
+        btnDone = findViewById(R.id.btnDone);
+        btnPaused = findViewById(R.id.btnPaused);
+        btnCanceled = findViewById(R.id.btnCanceled);
+        btnEdit = findViewById(R.id.btnEdit);
+        btnDelete = findViewById(R.id.btnDelete);
+
+        // extras
+        taskId = getIntent().getStringExtra("taskId");
+        if (taskId == null || taskId.isEmpty()) {
+            Toast.makeText(this, "Nedostaje ID zadatka", Toast.LENGTH_LONG).show();
+            finish(); return;
+        }
+
+        // kategorije (za ime + boju)
+        catRepo.getMyCategories(list -> {
+            cats.clear();
+            for (Category c : list) cats.put(c.id, c);
+            listenTask();
+        }, e -> listenTask());
+
+        // akcije statusa
+        btnActive.setOnClickListener(v -> updateStatus("active"));
+        btnDone.setOnClickListener(v -> updateStatus("done"));
+        btnPaused.setOnClickListener(v -> updateStatus("paused"));
+        btnCanceled.setOnClickListener(v -> updateStatus("canceled"));
+
+        // uredi
+        btnEdit.setOnClickListener(v -> {
+            Intent it = new Intent(this, CreateTaskActivity.class);
+            it.putExtra("editTaskId", taskId);  // tvoja CreateTaskActivity treba da podrži “edit mode”
+            startActivity(it);
+        });
+
+        // obriši
+        btnDelete.setOnClickListener(v -> {
+            if ("done".equalsIgnoreCase(current.status) && !Boolean.TRUE.equals(current.recurring)) {
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("Nije dozvoljeno")
+                        .setMessage("Završene (jednokratne) zadatke nije moguće obrisati.")
+                        .setPositiveButton("OK", null).show();
+                return;
+            }
+
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Obriši zadatak?")
+                    .setMessage(Boolean.TRUE.equals(current.recurring)
+                            ? "Obrisati ćeš raspored (sva buduća ponavljanja). Ranije završene pojave ostaju u kalendaru."
+                            : "Obrisati zadatak?")
+                    .setPositiveButton("Obriši", (d,w) -> {
+                        new TaskRepository().deleteTaskWithRule(current,
+                                ok -> { Toast.makeText(this, "Obrisano", Toast.LENGTH_SHORT).show(); finish(); },
+                                err -> Toast.makeText(this, "Greška: " + err.getMessage(), Toast.LENGTH_LONG).show());
+                    })
+                    .setNegativeButton("Otkaži", null)
+                    .show();
+        });
+    }
+
+    @Override protected void onDestroy() {
+        super.onDestroy();
+        if (reg != null) reg.remove();
+    }
+
+    private void listenTask() {
+        FirebaseFirestore.getInstance()
+                .collection("tasks").document(taskId)
+                .addSnapshotListener((snap, e) -> {
+                    if (e != null) return;
+
+                    if (snap != null && snap.exists()) {
+                        // Task je pronađen (živ)
+                        current = snap.toObject(Task.class);
+                        // intervali već postoje u dokumentu, ne generišemo ništa
+                        // samo ih koristimo u updateStatus()
+                        bind(current);
+
+                    } else {
+                        // Task ne postoji
+                        Toast.makeText(this, "Task nije pronađen", Toast.LENGTH_LONG).show();
+                        finish();
+                    }
+                });
+    }
+
+
+    private void bind(Task t) {
+        if (t == null) return;
+
+        tvName.setText(notNull(t.name));
+        tvDesc.setText(notEmpty(t.description) ? t.description : "—");
+
+        // status (možeš obojiti)
+        String statusText = Boolean.TRUE.equals(t.recurring)
+                ? getIntervalStatusForCurrentOccurrence()
+                : notNull(t.status);
+
+        tvStatus.setText("Status: " + statusText);
+
+        // kategorija + boja
+        Category c = t.categoryId != null ? cats.get(t.categoryId) : null;
+        tvCategory.setText("Kategorija: " + (c != null ? c.name : "—"));
+        // oboji kružić levo (viewCategoryColor) ako želiš – ili samo tekst oboj
+        try {
+            int color = Color.parseColor(c != null ? c.colorHex : "#607D8B");
+            var colorDot = findViewById(R.id.viewCategoryColor);
+            if (colorDot != null) {
+                GradientDrawable bg = new GradientDrawable();
+                bg.setShape(GradientDrawable.OVAL);
+                bg.setColor(color);
+                colorDot.setBackground(bg);
+            }
+        } catch (Exception ignored) {}
+
+        // vreme / raspored (sekcija 2.1)
+        StringBuilder sb = new StringBuilder();
+        if (Boolean.TRUE.equals(t.recurring)) {
+            sb.append("Tip: Ponavljajući\n");
+            sb.append("Početak: ").append(t.startDate > 0 ? fDate.format(new java.util.Date(t.startDate)) : "—").append("\n");
+            sb.append("Kraj: ").append(t.endDate > 0 ? fDate.format(new java.util.Date(t.endDate)) : "bez kraja").append("\n");
+            sb.append("Interval: ").append(Math.max(1, t.recurrenceInterval)).append(" ");
+            sb.append(notNull(t.recurrenceUnit)).append("\n");
+            sb.append("Vreme u danu: ").append(notNull(t.timeOfDay)).append("\n");
+            sb.append("Zona: ").append(notNull(t.tz));
+            if (t.nextDueAt != null && t.nextDueAt > 0) {
+                sb.append("\nSledeće: ").append(fDateTime.format(new java.util.Date(t.nextDueAt)));
+            }
+        } else {
+            sb.append("Tip: Jednokratni\n");
+            sb.append("Rok: ").append(t.dueTime > 0 ? fDateTime.format(new java.util.Date(t.dueTime)) : "—");
+        }
+        tvTiming.setText(sb.toString());
+        updateButtonsVisibility(t);
+        String xpText = "⭐ Težina: " + t.weightXP + " XP\n" +
+                "🔥 Bitnost: " + t.importanceXP + " XP\n" +
+                "💎 Ukupno: " + t.totalXP + " XP";
+        tvXP.setText(xpText);
+        tvXP.setTextColor(Color.parseColor("#4CAF50")); // svetlo zelena
+
+    }
+
+
+    private void updateStatus(String newStatus) {
+        if (current == null || current.id == null) return;
+
+        long now = System.currentTimeMillis();
+        long threeDaysAgo = now - 3L * 24 * 60 * 60 * 1000;
+        long occurrenceAt = getIntent().getLongExtra("occurrenceAt", 0L);
+
+        // 🔹 Odredi relevantno vreme za task
+        long relevantTime = 0L;
+        if (Boolean.TRUE.equals(current.recurring)) {
+            relevantTime = occurrenceAt;
+        } else if (current.dueTime != null) {
+            relevantTime = current.dueTime;
+        }
+
+        // 🔹 Spreči označavanje kao done pre vremena
+        if ("done".equals(newStatus) && relevantTime > now) {
+            Toast.makeText(this, "Zadatak se može označiti kao urađen tek nakon isteka vremena izvršenja.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        // 🔹 Ponavljajući zadaci
+        if (Boolean.TRUE.equals(current.recurring) && current.intervals != null && occurrenceAt > 0) {
+            boolean intervalFound = false;
+
+            for (OccurrenceInterval interval : current.intervals) {
+                if ("active".equalsIgnoreCase(interval.status) && interval.date < threeDaysAgo) {
+                    interval.status = "not_done";
+                }
+
+                if (isSameDay(interval.date, occurrenceAt)) {
+                    intervalFound = true;
+
+                    if ("done".equals(newStatus) && interval.date > now) {
+                        Toast.makeText(this, "Ova pojava još nije završena — ne može biti označena kao urađena.", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+
+                    if (!"not_done".equalsIgnoreCase(interval.status)) {
+                        interval.status = newStatus;
+
+                        // 🔹 Dodaj XP korisniku ako je zadatak označen kao done
+                        if ("done".equals(newStatus) && current.ownerUid != null) {
+                            long xpToAdd = current.totalXP > 0 ? current.totalXP : 10L;
+
+                            new UserRepository().addXP(current.ownerUid, xpToAdd, new UserRepository.OnLevelUpListener() {
+                                @Override
+                                public void onSuccess(boolean leveledUp) {
+                                    Log.d("XP_UPDATE", "leveledUp = " + leveledUp);
+
+                                    Toast.makeText(TaskDetailActivity.this, xpToAdd + " XP dodato!", Toast.LENGTH_SHORT).show();
+
+                                    // 🔹 Izračunaj i ažuriraj uspešnost korisnika
+                                    TaskRepository taskRepo = new TaskRepository();
+                                    taskRepo.calculateUserSuccessRate(current.ownerUid, successRate -> {
+                                        new UserRepository().updateSuccessRate(current.ownerUid, successRate,
+                                                v -> {
+                                                    Toast.makeText(TaskDetailActivity.this,
+                                                            "Uspešnost ažurirana: " + String.format("%.2f", successRate) + "%",
+                                                            Toast.LENGTH_SHORT).show();
+                                                },
+                                                e -> Toast.makeText(TaskDetailActivity.this,
+                                                        "Greška pri ažuriranju uspešnosti", Toast.LENGTH_SHORT).show());
+                                    }, e -> {
+                                        Toast.makeText(TaskDetailActivity.this, "Neuspelo izračunavanje uspešnosti", Toast.LENGTH_SHORT).show();
+                                    });
+
+                                    if (leveledUp && current.ownerUid != null) {
+                                        Log.d("BOSS_DEBUG", "leveledUp=true, ownerUid=" + current.ownerUid);
+
+                                        UserRepository userRepo = new UserRepository();
+                                        userRepo.getUserLevel(current.ownerUid,
+                                                level -> {
+                                                    Log.d("BOSS_DEBUG", "getUserLevel success, current level=" + level);
+
+                                                    int nextLevel = level; // kreiramo bossa za sledeći nivo
+                                                    BossRepository bossRepo = new BossRepository();
+
+                                                    Log.d("BOSS_DEBUG", "Poziv createNextBossForUser za nextLevel=" + nextLevel);
+                                                    bossRepo.createNextBossForUser(current.ownerUid, nextLevel,
+                                                            aVoid -> {
+                                                                Log.d("BOSS_DEBUG", "Boss kreiran uspešno za nivo " + nextLevel);
+                                                                Toast.makeText(TaskDetailActivity.this,
+                                                                        "Novi bos kreiran za nivo " + nextLevel, Toast.LENGTH_SHORT).show();
+
+                                                                Intent intent = new Intent(TaskDetailActivity.this, BossFightActivity.class);
+                                                                startActivity(intent);
+                                                            },
+                                                            e -> {
+                                                                Log.e("BOSS_DEBUG", "Greška pri kreiranju bossa: " + e.getMessage());
+                                                                Toast.makeText(TaskDetailActivity.this,
+                                                                        "Greška pri kreiranju bossa: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                                            }
+                                                    );
+                                                },
+                                                e -> {
+                                                    Log.e("BOSS_DEBUG", "Greška pri dohvatu level-a korisnika: " + e.getMessage());
+                                                    Toast.makeText(TaskDetailActivity.this,
+                                                            "Greška pri dohvatu level-a korisnika: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                                }
+                                        );
+                                    } else {
+                                        Log.d("BOSS_DEBUG", "leveledUp=false ili ownerUid=null, ne kreira se bos");
+                                    }
+
+
+                                }
+
+                                @Override
+                                public void onFailure(Exception e) {
+                                    Toast.makeText(TaskDetailActivity.this, "Greška pri dodavanju XP: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                }
+                            });
+                        }
+
+                        updateSuccessRateForUser(current.ownerUid);
+
+                    }
+                }
+            }
+
+            // 🔹 Ako korisnik pritisne "Cancelled", otkaži sve neodrađene pojave
+            if ("cancelled".equals(newStatus)) {
+                for (OccurrenceInterval interval : current.intervals) {
+                    if (!"done".equalsIgnoreCase(interval.status)) {
+                        interval.status = "cancelled";
+                    }
+                }
+
+                // 🔹 Ažuriraj Firestore da snimi promene
+                Map<String, Object> updates = new HashMap<>();
+                updates.put("intervals", current.intervals);
+                updates.put("nextDueAt", -1L); // više nema budućih pojava
+                updates.put("status", "cancelled");
+                updates.put("updatedAt", System.currentTimeMillis());
+
+                new TaskRepository().updateTaskFields(current.id, updates,
+                        v -> {
+                            Toast.makeText(TaskDetailActivity.this,
+                                    "Svi neodrađeni intervali su otkazani.", Toast.LENGTH_SHORT).show();
+                            bind(current);
+                        },
+                        e -> Toast.makeText(TaskDetailActivity.this,
+                                "Greška pri otkazivanju zadatka: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                );
+                updateSuccessRateForUser(current.ownerUid);
+                return;
+            }
+
+            // 🔹 Ako korisnik pritisne "Paused", pauziraj sve buduće pojave
+            if ("paused".equals(newStatus)) {
+
+                for (OccurrenceInterval interval : current.intervals) {
+                    // Sve buduće pojave koje nisu završene postavi na "paused"
+                    if (interval.date > now && !"done".equalsIgnoreCase(interval.status)) {
+                        interval.status = "paused";
+                    }
+                }
+
+                // 🔹 Ažuriraj Firestore
+                Map<String, Object> updates = new HashMap<>();
+                updates.put("intervals", current.intervals);
+                updates.put("status", "paused"); // možeš i samo "intervals" ako ne želiš da se ceo task označi kao paused
+                updates.put("updatedAt", now);
+
+                new TaskRepository().updateTaskFields(current.id, updates,
+                        v -> {
+                            Toast.makeText(TaskDetailActivity.this,
+                                    "Sve buduće pojave su pauzirane.", Toast.LENGTH_SHORT).show();
+                            bind(current);
+                        },
+                        e -> Toast.makeText(TaskDetailActivity.this,
+                                "Greška pri pauziranju zadatka: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                );
+                updateSuccessRateForUser(current.ownerUid);
+                return; // sprečava dalju obradu u ovoj metodi
+            }
+
+            // 🔹 Ako korisnik pritisne "Active" na pauziran zadatak
+            if ("active".equals(newStatus)) {
+
+                for (OccurrenceInterval interval : current.intervals) {
+                    // Sve buduće pojave koje su trenutno paused postavi na active
+                    if (interval.date > now && "paused".equalsIgnoreCase(interval.status)) {
+                        interval.status = "active";
+                    }
+                }
+
+                // 🔹 Ažuriraj Firestore
+                Map<String, Object> updates = new HashMap<>();
+                updates.put("intervals", current.intervals);
+
+                // Postavi sledeću pojavu
+                Long nextDue = current.intervals.stream()
+                        .filter(i -> "active".equalsIgnoreCase(i.status))
+                        .map(i -> i.date)
+                        .min(Long::compareTo)
+                        .orElse(-1L);
+                updates.put("nextDueAt", nextDue);
+                updates.put("status", "active"); // ceo zadatak sada aktivan
+                updates.put("updatedAt", now);
+
+                new TaskRepository().updateTaskFields(current.id, updates,
+                        v -> {
+                            Toast.makeText(TaskDetailActivity.this,
+                                    "Sve buduće pojave su ponovo aktivne.", Toast.LENGTH_SHORT).show();
+                            bind(current);
+                        },
+                        e -> Toast.makeText(TaskDetailActivity.this,
+                                "Greška pri aktiviranju zadatka: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                );
+                updateSuccessRateForUser(current.ownerUid);
+
+                return; // sprečava dalju obradu u metodi
+            }
+
+
+            if (!intervalFound) {
+                Toast.makeText(this, "Interval za ovu pojavu nije pronađen.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // 🔸 Update Firestore-a
+            Map<String, Object> updates = new HashMap<>();
+            updates.put("intervals", current.intervals);
+            Long nextDue = current.intervals.stream()
+                    .filter(i -> "active".equalsIgnoreCase(i.status))
+                    .map(i -> i.date)
+                    .min(Long::compareTo)
+                    .orElse(-1L);
+            updates.put("nextDueAt", nextDue);
+            updates.put("updatedAt", now);
+
+            taskRepo.updateTaskFields(current.id, updates,
+                    v -> {
+                        Toast.makeText(this, "Status intervala ažuriran.", Toast.LENGTH_SHORT).show();
+                        bind(current);
+                    },
+                    e -> Toast.makeText(this, "Greška pri update-u intervala: " + e.getMessage(), Toast.LENGTH_LONG).show()
+            );
+            updateSuccessRateForUser(current.ownerUid);
+
+            return;
+        }
+
+        // 🔹 Jednokratni zadaci
+        if ("active".equals(current.status) && relevantTime > 0 && relevantTime < threeDaysAgo) {
+            new TaskRepository().updateTaskStatus(current.id, "not_done",
+                    v -> {
+                        Toast.makeText(this, "Zadatak je istekao i označen kao neurađen.", Toast.LENGTH_SHORT).show();
+                        bind(current);
+                    },
+                    e -> Toast.makeText(this, "Greška pri update-u zadatka: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+            );
+            updateSuccessRateForUser(current.ownerUid);
+
+            return;
+        }
+
+        // 🔹 Normalno menjanje statusa
+        taskRepo.updateTaskStatus(current.id, newStatus,
+                v -> {
+                    Toast.makeText(this, "Status zadatka ažuriran", Toast.LENGTH_SHORT).show();
+                    bind(current);
+
+                    // 🔹 XP za jednokratne zadatke
+                    if ("done".equals(newStatus) && current.ownerUid != null) {
+                        long xpToAdd = current.totalXP > 0 ? current.totalXP : 10L;
+
+                        new UserRepository().addXP(current.ownerUid, xpToAdd, new UserRepository.OnLevelUpListener() {
+                            @Override
+                            public void onSuccess(boolean leveledUp) {
+                                Log.d("XP_UPDATE", "leveledUp = " + leveledUp);
+
+                                Toast.makeText(TaskDetailActivity.this, xpToAdd + " XP dodato!", Toast.LENGTH_SHORT).show();
+
+                                // 🔹 Izračunaj i ažuriraj uspešnost korisnika
+                                TaskRepository taskRepo = new TaskRepository();
+                                taskRepo.calculateUserSuccessRate(current.ownerUid, successRate -> {
+                                    new UserRepository().updateSuccessRate(current.ownerUid, successRate,
+                                            v -> {
+                                                Toast.makeText(TaskDetailActivity.this,
+                                                        "Uspešnost ažurirana: " + String.format("%.2f", successRate) + "%",
+                                                        Toast.LENGTH_SHORT).show();
+                                            },
+                                            e -> Toast.makeText(TaskDetailActivity.this,
+                                                    "Greška pri ažuriranju uspešnosti", Toast.LENGTH_SHORT).show());
+                                }, e -> {
+                                    Toast.makeText(TaskDetailActivity.this, "Neuspelo izračunavanje uspešnosti", Toast.LENGTH_SHORT).show();
+                                });
+
+                                if (leveledUp && current.ownerUid != null) {
+                                    Log.d("BOSS_DEBUG", "leveledUp=true, ownerUid=" + current.ownerUid);
+
+                                    UserRepository userRepo = new UserRepository();
+                                    userRepo.getUserLevel(current.ownerUid,
+                                            level -> {
+                                                Log.d("BOSS_DEBUG", "getUserLevel success, current level=" + level);
+
+                                                int nextLevel = level; // kreiramo bossa za sledeći nivo
+                                                BossRepository bossRepo = new BossRepository();
+
+                                                Log.d("BOSS_DEBUG", "Poziv createNextBossForUser za nextLevel=" + nextLevel);
+                                                bossRepo.createNextBossForUser(current.ownerUid, nextLevel,
+                                                        aVoid -> {
+                                                            Log.d("BOSS_DEBUG", "Boss kreiran uspešno za nivo " + nextLevel);
+                                                            Toast.makeText(TaskDetailActivity.this,
+                                                                    "Novi bos kreiran za nivo " + nextLevel, Toast.LENGTH_SHORT).show();
+
+                                                            Intent intent = new Intent(TaskDetailActivity.this, BossFightActivity.class);
+                                                            startActivity(intent);
+                                                        },
+                                                        e -> {
+                                                            Log.e("BOSS_DEBUG", "Greška pri kreiranju bossa: " + e.getMessage());
+                                                            Toast.makeText(TaskDetailActivity.this,
+                                                                    "Greška pri kreiranju bossa: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                                        }
+                                                );
+                                            },
+                                            e -> {
+                                                Log.e("BOSS_DEBUG", "Greška pri dohvatu level-a korisnika: " + e.getMessage());
+                                                Toast.makeText(TaskDetailActivity.this,
+                                                        "Greška pri dohvatu level-a korisnika: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                            }
+                                    );
+                                } else {
+                                    Log.d("BOSS_DEBUG", "leveledUp=false ili ownerUid=null, ne kreira se bos");
+                                }
+
+
+                            }
+
+                            @Override
+                            public void onFailure(Exception e) {
+                                Toast.makeText(TaskDetailActivity.this, "Greška pri dodavanju XP: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                            }
+                        });
+                    }
+
+                },
+                e -> Toast.makeText(this, "Greška: " + e.getMessage(), Toast.LENGTH_LONG).show()
+        );
+    }
+
+    private boolean isSameDay(long t1, long t2) {
+        Calendar c1 = Calendar.getInstance();
+        c1.setTimeInMillis(t1);
+        Calendar c2 = Calendar.getInstance();
+        c2.setTimeInMillis(t2);
+        return c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR)
+                && c1.get(Calendar.MONTH) == c2.get(Calendar.MONTH)
+                && c1.get(Calendar.DAY_OF_MONTH) == c2.get(Calendar.DAY_OF_MONTH);
+    }
+
+    private void updateButtonsVisibility(Task t) {
+        String status = Boolean.TRUE.equals(t.recurring) ? getIntervalStatusForCurrentOccurrence() : notNull(t.status);
+
+        btnActive.setEnabled(false);
+        btnDone.setEnabled(false);
+        btnPaused.setEnabled(false);
+        btnCanceled.setEnabled(false);
+
+        if ("active".equals(status)) {
+            btnDone.setEnabled(true);
+            btnCanceled.setEnabled(true);
+            if (Boolean.TRUE.equals(t.recurring)) btnPaused.setEnabled(true);
+        } else if ("paused".equals(status)) {
+            btnActive.setEnabled(true); // dozvoli ponovno aktiviranje
+        }
+
+    }
+
+    private String getIntervalStatusForCurrentOccurrence() {
+        if (current == null || !Boolean.TRUE.equals(current.recurring) || current.intervals == null)
+            return current != null ? notNull(current.status) : "—";
+
+        long occurrenceAt = getIntent().getLongExtra("occurrenceAt", 0L);
+        if (occurrenceAt <= 0) return notNull(current.status);
+
+        for (OccurrenceInterval interval : current.intervals) {
+            if (isSameDay(interval.date, occurrenceAt)) {
+                return notNull(interval.status);
+            }
+        }
+
+        return notNull(current.status); // fallback
+    }
+
+    private void updateSuccessRateForUser(String uid) {
+        TaskRepository taskRepo = new TaskRepository();
+        taskRepo.calculateUserSuccessRate(uid, successRate -> {
+            new UserRepository().updateSuccessRate(uid, successRate,
+                    v -> {
+                        Toast.makeText(TaskDetailActivity.this,
+                                "Uspešnost ažurirana: " + String.format("%.2f", successRate) + "%",
+                                Toast.LENGTH_SHORT).show();
+                    },
+                    e -> Toast.makeText(TaskDetailActivity.this,
+                            "Greška pri ažuriranju uspešnosti", Toast.LENGTH_SHORT).show());
+        }, e -> Toast.makeText(TaskDetailActivity.this,
+                "Neuspelo izračunavanje uspešnosti", Toast.LENGTH_SHORT).show());
+    }
+
+    private static String notNull(String s) { return s != null ? s : ""; }
+    private static boolean notEmpty(String s) { return s != null && !s.trim().isEmpty(); }
+}

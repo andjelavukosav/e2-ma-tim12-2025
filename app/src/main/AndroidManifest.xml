@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CAMERA" /> <!-- Za QR scanner -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -29,6 +34,85 @@
         <activity
             android:name=".ui.auth.RegisterActivity"
             android:exported="true" />
+
+        <activity
+            android:name=".ui.category.CategoryListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.task.CreateTaskActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".ui.task.TaskDetailActivity"
+            android:exported="false"/>
+
+
+        <activity
+            android:name=".ui.task.TaskListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.task.CalendarActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.boss.BossFightActivity"
+            android:exported="false" />
+
+
+        <activity
+            android:name=".ui.profile.ProfileActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".ui.profile.ChangePasswordActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".ui.profile.UsersActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".ui.profile.ProfileViewOtherActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".ui.profile.LevelProgressActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".ui.store.StoreActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".ui.inventory.InventoryActivity"
+            android:exported="true" />
+
+        <activity
+            android:name=".ui.inventory.ActiveEquipmentActivity"
+            android:exported="true" />
+
+        <activity android:name=".ui.profile.QRScannerActivity" />
+
+
+        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:screenOrientation="fullSensor"
+            tools:replace="screenOrientation" />
+
+        <activity android:name=".ui.profile.FriendsListActivity"
+            android:exported="true"/>
+
+
+
+
+        <activity
+            android:name=".ui.profile.AlliancesActivity"
+            android:exported="true" />
+
+
+
     </application>
 
 </manifest>

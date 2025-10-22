@@ -1,0 +1,10 @@
+<!-- res/drawable/ic_sword.xml - PP/Attack ikona -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00ff88"
+        android:pathData="M6.92,5L5,6.92l5.38,5.38L6,16.7l1.3,1.3l4.4,-4.4l5.39,5.38l1.92,-1.92l-5.38,-5.38L18,6.31L16.7,5l-4.39,4.39z"/>
+</vector>

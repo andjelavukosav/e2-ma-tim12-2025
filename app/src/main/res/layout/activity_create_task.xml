@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="start"
+        android:paddingBottom="16dp">
+
+        <!-- Naziv zadatka -->
+        <EditText
+            android:id="@+id/etTaskName"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:hint="Naziv zadatka"
+            android:inputType="textPersonName"
+            android:padding="8dp"/>
+
+        <!-- Opis zadatka -->
+        <EditText
+            android:id="@+id/etTaskDesc"
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:hint="Opis (opciono)"
+            android:inputType="textMultiLine"
+            android:padding="8dp"
+            android:layout_marginTop="8dp"/>
+
+        <!-- Spinner kategorije -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Kategorija"
+            android:layout_marginTop="16dp"/>
+
+        <Spinner
+            android:id="@+id/spinnerCategory"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"/>
+
+        <!-- RadioGroup: Jednokratni / Ponavljajući -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tip zadatka"
+            android:layout_marginTop="16dp"/>
+        <RadioGroup
+            android:id="@+id/rgTaskType"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <RadioButton
+                android:id="@+id/rbSingle"
+                android:text="Jednokratni"
+                android:checked="true"
+                android:layout_height="48dp"
+                android:layout_width="wrap_content"/>
+            <RadioButton
+                android:id="@+id/rbRecurring"
+                android:text="Ponavljajući"
+                android:layout_height="48dp"
+                android:layout_width="wrap_content"/>
+        </RadioGroup>
+
+        <!-- Polja za jednokratni -->
+        <LinearLayout
+            android:id="@+id/layoutSingle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Vreme izvršenja:"/>
+            <Button
+                android:id="@+id/btnDueTime"
+                android:text="Izaberi vreme"
+                android:layout_height="48dp"
+                android:layout_width="wrap_content"/>
+        </LinearLayout>
+
+        <!-- Polja za ponavljajući -->
+        <LinearLayout
+            android:id="@+id/layoutRecurring"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Datum početka"/>
+            <Button
+                android:id="@+id/btnStartDate"
+                android:text="Izaberi datum"
+                android:layout_height="48dp"
+                android:layout_width="wrap_content"
+                android:layout_marginTop="4dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Datum završetka"
+                android:layout_marginTop="8dp"/>
+            <Button
+                android:id="@+id/btnEndDate"
+                android:text="Izaberi datum"
+                android:layout_height="48dp"
+                android:layout_width="wrap_content"
+                android:layout_marginTop="4dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Interval"
+                android:layout_marginTop="8dp"/>
+            <NumberPicker
+                android:id="@+id/npInterval"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Jedinica ponavljanja"/>
+            <Spinner
+                android:id="@+id/spinnerUnit"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"/>
+        </LinearLayout>
+
+        <!-- Težina -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Težina"
+            android:layout_marginTop="16dp"/>
+        <Spinner
+            android:id="@+id/spinnerWeight"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"/>
+
+        <!-- Bitnost -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bitnost"
+            android:layout_marginTop="16dp"/>
+        <Spinner
+            android:id="@+id/spinnerImportance"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"/>
+
+        <!-- Dugme za čuvanje -->
+        <Button
+            android:id="@+id/btnSaveTask"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Sačuvaj zadatak"
+            android:layout_marginTop="24dp"/>
+    </LinearLayout>
+</ScrollView>

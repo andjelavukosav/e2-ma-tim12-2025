@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/layout/dialog_boss_victory.xml -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="#16213e"
+    android:gravity="center">
+
+    <!-- Victory Title -->
+    <TextView
+        android:id="@+id/tv_victory_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🏆 POBEDA! 🏆"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="#ffd700"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- Victory Icon/Animation -->
+    <ImageView
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:src="@drawable/ic_trophy"
+        android:contentDescription="Victory"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- Victory Message -->
+    <TextView
+        android:id="@+id/tv_victory_message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Pobedio si Boss-a nivoa X!"
+        android:textSize="18sp"
+        android:textColor="#ffffff"
+        android:textAlignment="center"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- Session Statistics -->
+    <TextView
+        android:id="@+id/tv_victory_stats"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Pogoci: 3/5 (60%)\nUkupna šteta: 750"
+        android:textSize="14sp"
+        android:textColor="#a0a0a0"
+        android:textAlignment="center"
+        android:layout_marginBottom="24dp"/>
+
+    <!-- Rewards Section -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="NAGRADE:"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="#00ff88"
+        android:layout_marginBottom="12dp"/>
+
+    <!-- XP Reward -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        android:layout_marginBottom="8dp">
+
+        <ImageView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_star"
+            android:contentDescription="XP"
+            app:tint="#00d9ff"/>
+
+        <TextView
+            android:id="@+id/tv_victory_xp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="+500 XP"
+            android:textSize="18sp"
+            android:textColor="#00d9ff"
+            android:textStyle="bold"
+            android:layout_marginStart="12dp"/>
+    </LinearLayout>
+
+    <!-- Coins Reward -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        android:layout_marginBottom="8dp">
+
+        <ImageView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_coin"
+            android:contentDescription="Coins"
+            app:tint="#ffd700"/>
+
+        <TextView
+            android:id="@+id/tv_victory_coins"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="+100 💰"
+            android:textSize="18sp"
+            android:textColor="#ffd700"
+            android:textStyle="bold"
+            android:layout_marginStart="12dp"/>
+    </LinearLayout>
+
+    <!-- Next Boss Preview -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Spreman za sledećeg bosa?"
+        android:textSize="14sp"
+        android:textColor="#a0a0a0"
+        android:layout_marginTop="16dp"/>
+
+</LinearLayout>

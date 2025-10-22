@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <EditText
+        android:id="@+id/etCategoryName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Naziv kategorije"
+        android:inputType="textCapSentences"
+        android:maxLength="30" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Odaberi boju:"
+        android:textStyle="bold"
+        android:paddingTop="16dp" />
+
+    <!-- Paleta unapred definisanih boja -->
+    <GridLayout
+        android:id="@+id/gridColors"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="5"
+        android:rowCount="2"
+        android:paddingTop="8dp">
+
+        <!-- Primeri boja — možeš dodati koliko želiš -->
+        <View
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_margin="8dp"
+            android:backgroundTint="#43A047"
+            android:background="@drawable/bg_color_selectable"
+            android:tag="#43A047"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            />
+
+        <View
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_margin="8dp"
+            android:backgroundTint="#1E88E5"
+            android:background="@drawable/bg_color_selectable"
+            android:tag="#1E88E5"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            />
+
+        <View
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_margin="8dp"
+            android:backgroundTint="#F4511E"
+            android:background="@drawable/bg_color_selectable"
+            android:tag="#F4511E"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            />
+
+        <View
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_margin="8dp"
+            android:backgroundTint="#8E24AA"
+            android:background="@drawable/bg_color_selectable"
+            android:tag="#8E24AA"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            />
+
+        <View
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_margin="8dp"
+            android:backgroundTint="#FDD835"
+            android:background="@drawable/bg_color_selectable"
+            android:tag="#FDD835"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            />
+    </GridLayout>
+
+</LinearLayout>
